@@ -1,0 +1,70 @@
+<html>
+<body>
+<script src="../index.js"><</script>
+<script>
+
+var not = RuleReactor.not;
+
+function Person(name) {
+	this.name = name;
+	this.parents = [];
+	this.children = [];
+}
+
+RuleReactor.createRule("brother",0,{p1: Person,p2: Person},
+	function(p1,p2) {
+		return p1 && p2 && p1!==p2 && p1.brother==p2 && p2.brother!==p1;
+	},
+	function(p1,p2) {
+		p2.brother=p1;
+	});
+RuleReactor.createRule("parent-child-create",0,{p1: Person,p2: Person},
+	function(p1,p2) {
+		return p1 && p2 && p1!==p2 && p1.parents.indexOf(p2)>=0 && p2.children.indexOf(p1)===-1;
+	},
+	function(p1,p2) {
+		p2.children.push(p1);
+	});
+RuleReactor.createRule("parent-child-remove",-1,{p1: Person,p2: Person},
+	function(p1,p2) {
+		return p1 && p2 && p1!==p2 && p1.parents.indexOf(p2)===-1 && p2.children.indexOf(p1)>=0;
+	},
+	function(p1,p2) {
+		p2.children.splice(p2.children.indexOf(p1),1);
+	});
+// trivial rules for testing
+RuleReactor.createRule("some-named",-1,{p1: Person},
+	function(p1) {
+		return Person.exists(function(person) { person.name===p1.name; });
+	},
+	function(p1) {
+		console.log("some named the same",p1);
+	});
+RuleReactor.createRule("every-named",-1,{p1: Person},
+	function(p1) {
+		return not(Person.forall(function(person) { person.name===p1.name; }));
+	},
+	function(p1) {
+		console.log("not every named the same",p1);
+	});
+	
+RuleReactor.trace();
+var mary = new Person("mary");
+var joe = new Person("joe");
+var bill = new Person("bill");
+RuleReactor.assert(joe,bill,mary);
+joe.brother = bill;
+joe.parents.push(mary);
+mary.children.push(bill);
+RuleReactor.run();
+RuleReactor.data.forEach(function(instance) {
+	var obj = {};
+	Object.keys(instance).forEach(function(key) {
+		obj[key] = instance[key];
+	});
+	console.log(obj);
+});
+
+
+</script>
+</body></html>
