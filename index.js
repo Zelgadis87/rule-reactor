@@ -79,7 +79,7 @@
 				me.bindings[variable].push(instance);
 			}
 		});
-	}
+	};
 	Rule.prototype.unbind = function(instance) {
 		var me = this;
 		Object.keys(me.bindings).forEach(function(variable) {

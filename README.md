@@ -10,7 +10,7 @@ Browser code can also be found in the browser directory at https://github.com/an
 
 # Documentation
 
-See the GitHub Wiki: https://github.com/anywhichway/rule-reactor/wiki/
+Documentation will be available with v0.0.2 on or about 2016-03-12. Meanwhile see examples directory.
 
 # Building & Testing
 
