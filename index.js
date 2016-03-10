@@ -1,27 +1,27 @@
-//     rule-reactor
-//
-//     Copyright (c) 2016 Simon Y. Blackwell, AnyWhichWay
-//     MIT License - http://opensource.org/licenses/mit-license.php
+//rule-reactor
+
+//Copyright (c) 2016 Simon Y. Blackwell, AnyWhichWay
+//MIT License - http://opensource.org/licenses/mit-license.php
 (function() {
 	"use strict";
 	function crossproduct(arrays) {
-		  var result = [],
-	      indices = Array(arrays.length);
-	  (function backtracking(index) {
-	    if(index === arrays.length) {
-	    	var row = arrays.map(function(array,index) {
-	            return array[indices[index]];
-	        });
-	        return result.push(row);
-	    }
-	    for(var i=0; i<arrays[index].length; ++i) {
-	      indices[index] = i;
-	      backtracking(index+1);
-	    }
-	  })(0);
-	  return result;
+		var result = [],
+		indices = Array(arrays.length);
+		(function backtracking(index) {
+			if(index === arrays.length) {
+				var row = arrays.map(function(array,index) {
+					return array[indices[index]];
+				});
+				return result.push(row);
+			}
+			for(var i=0; i<arrays[index].length; ++i) {
+				indices[index] = i;
+				backtracking(index+1);
+			}
+		})(0);
+		return result;
 	}
-	
+
 	function compile(rule) {
 		Object.keys(rule.scope).forEach(function(variable) {
 			var cons = rule.scope[variable];
@@ -40,23 +40,24 @@
 			}
 			rule.keys[variable] = {};
 			rule.bindings[variable] = (rule.bindings[variable] ? rule.bindings[variable] : []);
-			// extract instance keys from condition using a side-effect of replace
+			// extract instance keys from condition using a side-effect of
+			// replace
 			(rule.condition+"").replace(new RegExp("(\\b"+variable+"\\.\\w+\\b)","g"),
-				function(match) { 
-					var key = match.split(".")[1];
-					// cache what keys are associated with what variables
-					rule.keys[variable][key] = (rule.keys[variable][key] ? rule.keys[variable][key] : true);
-					// cache rules and variables impacted by key changes
-					cons.prototype.patternKeys[key] = (cons.prototype.patternKeys[key] ? cons.prototype.patternKeys[key] : {});
-					cons.prototype.patternKeys[key][rule.name] = rule;
-					// don't really do a replacement!
-					return match;
-				}
+					function(match) { 
+				var key = match.split(".")[1];
+				// cache what keys are associated with what variables
+				rule.keys[variable][key] = (rule.keys[variable][key] ? rule.keys[variable][key] : true);
+				// cache rules and variables impacted by key changes
+				cons.prototype.patternKeys[key] = (cons.prototype.patternKeys[key] ? cons.prototype.patternKeys[key] : {});
+				cons.prototype.patternKeys[key][rule.name] = rule;
+				// don't really do a replacement!
+				return match;
+			}
 			);
-			
+
 		});
 	}
-	
+
 	var RuleReactor = {};
 	RuleReactor.rules = {};
 	RuleReactor.data = new Set();
@@ -107,7 +108,8 @@
 								var f = rrget.value[fname];
 								rrget.value[fname] = function() {
 									f.call(this,...arguments);
-									// re-test the rules that pattern match the key
+									// re-test the rules that pattern match the
+									// key
 									Object.keys(instance.patternKeys[key]).forEach(function(rulename) {
 										instance.patternKeys[key][rulename].test(instance);
 									});
@@ -115,7 +117,8 @@
 								rrget.value[fname].originalFunction = f;
 							});
 						}
-						// delete descriptor properties that are inconsistent with rrget/rrset
+						// delete descriptor properties that are inconsistent
+						// with rrget/rrset
 						delete desc.value;
 						delete desc.writable;
 						desc.get = rrget;
@@ -123,7 +126,7 @@
 						Object.defineProperty(instance,key,desc);
 					}
 				});
-				
+
 				// bind to all associated rules
 				Object.keys(instance.rules).forEach(function(ruleinstance) {
 					var rule = instance.rules[ruleinstance];
@@ -188,7 +191,7 @@
 								});
 							}
 							Object.defineProperty(instance,key,desc.get.originalDescriptor);
-							
+
 						}
 					}
 				});
@@ -197,7 +200,7 @@
 					var rule = instance.rules[ruleinstance];
 					rule.unbind(instance);
 				});
-				
+
 			}
 		});
 		// re-test all associated rules after everything unbound
@@ -248,7 +251,8 @@
 						if(rule.action) {
 							rule.action(...matches);
 						}
-						// if action impacted agenda, then stop processing activation
+						// if action impacted agenda, then stop processing
+						// activation
 						if(RuleReactor.agenda.size!==size) {
 							size = RuleReactor.agenda.size;
 							break;
@@ -283,7 +287,7 @@
 		return !value;
 	}
 	var not = RuleReactor.not;
-	
+
 	function Rule(name,salience,scope,condition,action) {
 		this.name = name;
 		this.salience = salience;
@@ -292,7 +296,7 @@
 		this.condition = condition;
 		this.action = action;
 		this.bindings = {};
-		
+
 		compile(this);
 	} 
 	Rule.prototype.bind = function(instance) {
@@ -312,7 +316,9 @@
 			}
 		});
 	}
-	Rule.prototype.test = function(variable,instance) { // should we just test for instance not variables
+	Rule.prototype.test = function(variable,instance) { // should we just test
+		// for instance not
+		// variables
 		var me = this;
 		var tests = [], variables = Object.keys(me.bindings);
 		var instanceactivations, ruleactivations = RuleReactor.agenda.get(me);
@@ -325,7 +331,7 @@
 				ruleactivations.delete(instance);
 			}
 		}
-	
+
 		var values = [];
 		variables.forEach(function(variablename) {
 			if(variablename===variable) {
@@ -351,7 +357,7 @@
 			}
 			ruleactivations.set(instance,instanceactivations);
 		}
-	
+
 	}
 	Rule.prototype.reset = function() {
 		var me = this;
