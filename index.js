@@ -323,9 +323,9 @@
 				var count = ruleactivations.size;
 				for(var [variable,activations] of ruleactivations) {
 					count--;
-					var matches;
+					var matches = activations.pop();
 					// process matches
-					while(matches=activations.pop()) {
+					while(matches) {
 						if(RuleReactor.tracelevel>0) {
 							console.log("Executing: ",rule.name,rule,matches);
 						}
@@ -338,6 +338,7 @@
 							size = RuleReactor.agenda.size;
 							break;
 						}
+						matches = activations.pop();
 					}
 					// if no matches left, drop activations for variable
 					if(activations.length===0) {
