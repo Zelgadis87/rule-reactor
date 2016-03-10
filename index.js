@@ -32,12 +32,12 @@
 				return cons.instances && cons.instances.some(function(instance) {
 					return f(instance);
 				});
-			}
+			};
 			cons.forall = function(f) {
 				return cons.instances && cons.instances.every(function(instance) {
 					return f(instance);
 				});
-			}
+			};
 			rule.keys[variable] = {};
 			rule.bindings[variable] = (rule.bindings[variable] ? rule.bindings[variable] : []);
 			// extract instance keys from condition using a side-effect of
@@ -57,6 +57,87 @@
 
 		});
 	}
+	
+	function Rule(name,salience,scope,condition,action) {
+		this.name = name;
+		this.salience = salience;
+		this.scope = scope;
+		this.keys = {};
+		this.condition = condition;
+		this.action = action;
+		this.bindings = {};
+
+		compile(this);
+	} 
+	Rule.prototype.bind = function(instance) {
+		var me = this;
+		Object.keys(me.bindings).forEach(function(variable) {
+			if(instance instanceof me.scope[variable]) {
+				me.bindings[variable].push(instance);
+			}
+		});
+	}
+	Rule.prototype.unbind = function(instance) {
+		var me = this;
+		Object.keys(me.bindings).forEach(function(variable) {
+			var i = me.bindings[variable].indexOf(instance);
+			if(i>=0) {
+				me.bindings[variable].splice(i,1);
+			}
+		});
+	}
+	Rule.prototype.test = function(variable,instance) { // should we just test
+		// for instance not
+		// variables
+		var me = this;
+		var tests = [], variables = Object.keys(me.bindings);
+		var instanceactivations, ruleactivations = RuleReactor.agenda.get(me);
+		if(ruleactivations) {
+			instanceactivations = ruleactivations.get(instance);
+			if(instanceactivations) {
+				if(RuleReactor.tracelevel>0) {
+					console.log("Deactivating: ",me.name,me,instance,instanceactivations);
+				}
+				ruleactivations.delete(instance);
+			}
+		}
+
+		var values = [];
+		variables.forEach(function(variablename) {
+			if(variablename===variable) {
+				values.push([instance]);
+			} else {
+				values.push(me.bindings[variablename]);
+			}
+		});
+		tests = crossproduct(values);
+		instanceactivations = [];
+		tests.forEach(function(test) {
+			if(me.condition(...test)) {
+				instanceactivations.push(test);
+			}
+		});
+		if(instanceactivations.length>0) {
+			if(!ruleactivations) {
+				ruleactivations = new Map();
+				RuleReactor.agenda.set(me,ruleactivations);
+			}
+			if(RuleReactor.tracelevel>0) {
+				console.log("Activating: ",me.name,me,instance,instanceactivations);
+			}
+			ruleactivations.set(instance,instanceactivations);
+		}
+
+	}
+	Rule.prototype.reset = function() {
+		var me = this;
+		var ruleactivations = RuleReactor.agenda.get(me);
+		if(ruleactivations) {
+			ruleactivations.clear();
+			RuleReactor.agenda.delete(me);
+		}
+		me.test();
+	}
 
 	var RuleReactor = {};
 	RuleReactor.rules = {};
@@ -71,7 +152,7 @@
 		var instances = [].slice.call(arguments);
 		instances.forEach(function(instance) {
 			if(instance && typeof(instance)==="object" && !RuleReactor.data.has(instance)) {
-				RuleReactor.data.add(instance)
+				RuleReactor.data.add(instance);
 				instance.constructor.instances = (instance.constructor.instances ? instance.constructor.instances : []);
 				instance.constructor.instances.push(instance);
 				Object.keys(instance.patternKeys).forEach(function(key) {
@@ -175,7 +256,7 @@
 				Object.keys(instance).forEach(function(key) {
 					var desc = Object.getOwnPropertyDescriptor(instance,key);
 					if(desc.get.name==="rrget") {
-						if(desc.get.originalDescriptor===undefined) {
+						if(typeof(desc.get.originalDescriptor)==="undefined") {
 							delete instance[key];
 						} else {
 							if(desc.get.originalDescriptor.value instanceof Array || Array.isArray(desc.get.originalDescriptor.value)) {
@@ -286,94 +367,13 @@
 	RuleReactor.not = function(value) {
 		return !value;
 	}
-	var not = RuleReactor.not;
-
-	function Rule(name,salience,scope,condition,action) {
-		this.name = name;
-		this.salience = salience;
-		this.scope = scope;
-		this.keys = {};
-		this.condition = condition;
-		this.action = action;
-		this.bindings = {};
-
-		compile(this);
-	} 
-	Rule.prototype.bind = function(instance) {
-		var me = this;
-		Object.keys(me.bindings).forEach(function(variable) {
-			if(instance instanceof me.scope[variable]) {
-				me.bindings[variable].push(instance);
-			}
-		});
-	}
-	Rule.prototype.unbind = function(instance) {
-		var me = this;
-		Object.keys(me.bindings).forEach(function(variable) {
-			var i = me.bindings[variable].indexOf(instance);
-			if(i>=0) {
-				me.bindings[variable].splice(i,1);
-			}
-		});
-	}
-	Rule.prototype.test = function(variable,instance) { // should we just test
-		// for instance not
-		// variables
-		var me = this;
-		var tests = [], variables = Object.keys(me.bindings);
-		var instanceactivations, ruleactivations = RuleReactor.agenda.get(me);
-		if(ruleactivations) {
-			instanceactivations = ruleactivations.get(instance);
-			if(instanceactivations) {
-				if(RuleReactor.tracelevel>0) {
-					console.log("Deactivating: ",me.name,me,instance,instanceactivations);
-				}
-				ruleactivations.delete(instance);
-			}
-		}
-
-		var values = [];
-		variables.forEach(function(variablename) {
-			if(variablename===variable) {
-				values.push([instance]);
-			} else {
-				values.push(me.bindings[variablename]);
-			}
-		});
-		var tests = crossproduct(values);
-		var instanceactivations = [];
-		tests.forEach(function(test) {
-			if(me.condition(...test)) {
-				instanceactivations.push(test);
-			}
-		});
-		if(instanceactivations.length>0) {
-			if(!ruleactivations) {
-				ruleactivations = new Map();
-				RuleReactor.agenda.set(me,ruleactivations);
-			}
-			if(RuleReactor.tracelevel>0) {
-				console.log("Activating: ",me.name,me,instance,instanceactivations);
-			}
-			ruleactivations.set(instance,instanceactivations);
-		}
-
-	}
-	Rule.prototype.reset = function() {
-		var me = this;
-		var ruleactivations = RuleReactor.agenda.get(me);
-		if(ruleactivations) {
-			ruleactivations.clear();
-			RuleReactor.agenda.delete(me);
-		}
-		me.test();
-	}
+	
 	if (this.exports) {
 		this.exports  = RuleReactor;
-	} else if (typeof define === 'function' && define.amd) {
+	} else if (typeof define === "function" && define.amd) {
 		// Publish as AMD module
 		define(function() {return RuleReactor;});
 	} else {
 		this.RuleReactor = RuleReactor;
 	}
-}).call((typeof(window)!=='undefined' ? window : (typeof(module)!=='undefined' ? module : null)));
+}).call((typeof(window)!=="undefined" ? window : (typeof(module)!=="undefined" ? module : null)));
