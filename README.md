@@ -16,6 +16,8 @@ See the GitHub Wiki: https://github.com/anywhichway/rule-reactor/wiki/
 
 Building & testing is conducted using Travis, Mocha, Chai, and Istanbul.
 
+For code quality assessment purposes, the cyclomatic complexity threshold is set to 10.
+
 # Notes
 
 

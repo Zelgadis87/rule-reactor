@@ -4,6 +4,9 @@
 //MIT License - http://opensource.org/licenses/mit-license.php
 (function() {
 	"use strict";
+	
+	var RuleReactor = {};
+	
 	function crossproduct(arrays) {
 		var result = [],
 		indices = Array(arrays.length);
@@ -139,7 +142,6 @@
 		me.test();
 	}
 
-	var RuleReactor = {};
 	RuleReactor.rules = {};
 	RuleReactor.data = new Set();
 	RuleReactor.agenda = new Map();
