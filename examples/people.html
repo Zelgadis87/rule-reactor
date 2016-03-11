@@ -1,6 +1,6 @@
 <html>
 <body>
-<script src="../index.js"><</script>
+<script src="../index.js"></script>
 <script>
 
 var not = RuleReactor.not;
@@ -13,7 +13,7 @@ function Person(name) {
 
 RuleReactor.createRule("brother",0,{p1: Person,p2: Person},
 	function(p1,p2) {
-		return p1 && p2 && p1!==p2 && p1.brother==p2 && p2.brother!==p1;
+		return p1 && p2 && p1!==p2 && p1.brother===p2 && p2.brother!==p1;
 	},
 	function(p1,p2) {
 		p2.brother=p1;
