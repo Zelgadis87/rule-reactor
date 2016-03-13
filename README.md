@@ -1,5 +1,7 @@
 # rule-reactor
 
+A light weight, fast, expressive forward chaining business rule engine based on reactive programming techniques rather than Rete.
+
 # Install
 
 npm install rule-reactor

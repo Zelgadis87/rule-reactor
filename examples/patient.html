@@ -7,7 +7,8 @@ Rule base adapted from: http://www.csis.ysu.edu/~john/824/examples/EMH1.txt
 <script id="rulebase">
 
 var not = RuleReactor.not;
-var assert = RuleReactor.assert;
+var insert = RuleReactor.insert;
+
 
 function Patient() { 
 	this.diagnosis = null;
@@ -34,7 +35,7 @@ function Treatment(name) {
 // to have the diagnosis measles.
 RuleReactor.createRule("Measles",0,{p: Patient},
 	function(p1) {
-		return p1.fever==="high" && p1.spots===true && p1.innoculated===false;
+		return p1.fever=="high" && p1.spots==true && p1.innoculated==false;
 	},
 	function(p1) {
 		p1.diagnosis = new Diagnosis("measles","High temp, spots, and no innoculation for measles.");
@@ -43,7 +44,7 @@ RuleReactor.createRule("Measles",0,{p: Patient},
 // of course, there are lots of other things that could be wrong
 RuleReactor.createRule("Allergy1",0,{p: Patient},
 	function(p1) {
-		return p1.spots===true && (p1.fever!=="high" || p1.innoculated===true);
+		return p1.spots==true && (p1.fever!=="high" || p1.innoculated==true);
 	},
 	function(p1) {
 		p1.diagnosis = new Diagnosis("allergy","Allergy diagnosed from presence of spots and no fever or is innoculated for measles.");
@@ -51,7 +52,7 @@ RuleReactor.createRule("Allergy1",0,{p: Patient},
 
 RuleReactor.createRule("Allergy2",0,{p: Patient},
 	function(p1) {
-		return p1.rash===true;
+		return p1.rash==true;
 	},
 	function(p1) {
 		p1.diagnosis = new Diagnosis("allergy","Allergy diagnosed from presence of rash.");
@@ -59,7 +60,7 @@ RuleReactor.createRule("Allergy2",0,{p: Patient},
 
 RuleReactor.createRule("Flu",0,{p: Patient},
 	function(p1) {
-		return p1.soreThroat===true && (p1.fever==="mild" || p1.fever==="high");
+		return p1.soreThroat==true && (p1.fever=="mild" || p1.fever=="high");
 	},
 	function(p1) {
 		p1.diagnosis = new Diagnosis("flu","Flue diagnosed from sore throat and mild to high fever.");
@@ -69,7 +70,7 @@ RuleReactor.createRule("Flu",0,{p: Patient},
 
 RuleReactor.createRule("Penicillin",0,{p: Patient, d: Diagnosis},
 	function(p,d) {
-		return d && d.name==="measles";
+		return d.name=="measles";
 	},
 	function(p) {
 		p.treatment = new Treatment("pennicillin");
@@ -77,7 +78,7 @@ RuleReactor.createRule("Penicillin",0,{p: Patient, d: Diagnosis},
 
 RuleReactor.createRule("Allergy Pills",0,{p: Patient, d: Diagnosis},
 	function(p,d) {
-		return d && d.name==="allergy";
+		return d.name=="allergy";
 	},
 	function(p) {
 		p.treatment = new Treatment("allergy pills");
@@ -85,23 +86,23 @@ RuleReactor.createRule("Allergy Pills",0,{p: Patient, d: Diagnosis},
 	
 RuleReactor.createRule("Bed Rest",0,{p: Patient, d: Diagnosis},
 	function(p,d) {
-		return d && d.name==="flu";
+		return d.name=="flu";
 	},
 	function(p) {
 		p.treatment = new Treatment("bed rest");
 	});
 
 
-// data matched by the rules is just JavaScript class instances asserted into the RuleReactor
+// data matched by the rules is just JavaScript class instances inserted into the RuleReactor
 
-RuleReactor.trace();
+RuleReactor.trace(1);
 var p = new Patient();
 p.fever = "low";
 p.spots = true;
 p.rash = false;
 p.soreThroat = false;
 p.innoculated = false;
-RuleReactor.assert(p);
+RuleReactor.insert(p,true);
 
 
 </script>
