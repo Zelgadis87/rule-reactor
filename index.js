@@ -38,7 +38,7 @@
 			cons.prototype.rules[rule.name] = rule;
 			cons.prototype.activeKeys = (cons.prototype.activeKeys ? cons.prototype.activeKeys : {});
 			cons.exists = function(f) {
-				f = (f ? f : function() { return true; })
+				f = (f ? f : function() { return true; });
 				return cons.instances && cons.instances.some(function(instance) {
 					return f(instance);
 				});
@@ -68,8 +68,34 @@
 	var Console = {};
 	Console.log = function() { 
 		console.log.apply(console,arguments); 
-	}
+	};
 
+	function Activation(rule,bindings) {
+		this.rule = rule;
+		this.bindings = bindings;
+		if(RuleReactor.tracelevel>1) {
+			Console.log("Activating: ",this.rule,this.bindings);
+		}
+	}
+	Activation.prototype.execute = function() {
+		if(RuleReactor.tracelevel>0) {
+			Console.log("Firing: ",this.rule,this.bindings);
+		}
+		this.delete();
+		this.rule.action.apply(this.rule,this.bindings);
+	}
+	Activation.prototype.delete = function(instance) {
+		if(!instance || this.bindings.indexOf(instance)>=0) {
+			if(RuleReactor.tracelevel>1) {
+				Console.log("Deactivating: ",this.rule,this.bindings);
+			}
+			this.rule.activations.delete(this);
+			var i = RuleReactor.agenda.indexOf(this);
+			if(i>=0) {
+				RuleReactor.agenda.splice(i,1);
+			}
+		}
+	}
 
 	function Rule(name,salience,domain,condition,action) {
 		this.name = name;
@@ -169,7 +195,6 @@
 				});
 			}
 			tests.forEach(function(crossProducts) {
-				var activations = [];
 				crossProducts.forEach(function(crossProduct) {
 					if(me.condition.apply(me,crossProduct)) {
 						var activation = new Activation(me,crossProduct);
@@ -211,33 +236,6 @@
 			}
 			if(retest) {
 				me.test(instance);
-			}
-		}
-	}
-
-	function Activation(rule,bindings) {
-		this.rule = rule;
-		this.bindings = bindings;
-		if(RuleReactor.tracelevel>1) {
-			Console.log("Activating: ",this.rule,this.bindings);
-		}
-	}
-	Activation.prototype.execute = function() {
-		if(RuleReactor.tracelevel>0) {
-			Console.log("Firing: ",this.rule,this.bindings);
-		}
-		this.delete();
-		this.rule.action.apply(this.rule,this.bindings);
-	}
-	Activation.prototype.delete = function(instance) {
-		if(!instance || this.bindings.indexOf(instance)>=0) {
-			if(RuleReactor.tracelevel>1) {
-				Console.log("Deactivating: ",this.rule,this.bindings);
-			}
-			this.rule.activations.delete(this);
-			var i = RuleReactor.agenda.indexOf(this);
-			if(i>=0) {
-				RuleReactor.agenda.splice(i,1);
 			}
 		}
 	}
