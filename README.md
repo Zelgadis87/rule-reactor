@@ -12,7 +12,9 @@ Browser code can also be found in the browser directory at https://github.com/an
 
 # Documentation
 
-Documentation will be available with v0.0.2 on or about 2016-03-12. Meanwhile see examples directory.
+Documentation will be available with v0.0.3 on or about 2016-03-30. Meanwhile see examples directory. 
+
+There is also an intro at: http://anywhichway.github.io/rule-reactor.html
 
 # Building & Testing
 
@@ -22,9 +24,12 @@ For code quality assessment purposes, the cyclomatic complexity threshold is set
 
 # Notes
 
+v0.0.2 Salience ordering is not working for the agenda.
+
 
 # Updates (reverse chronological order)
 
+2016-03-13 v0.0.2 Performance improvements
 
 2016-03-10 v0.0.1 Original public commit
 

@@ -111,36 +111,36 @@
 			);
 	};
 	Rule.prototype.unbind = function(instance) {
-		var me = this, values = [];
-		Object.keys(me.bindings).forEach(function(variable) {
+		var me = this, variables = Object.keys(me.bindings);
+		variables.forEach(function(variable) {
 			var i = me.bindings[variable].indexOf(instance);
 			if(i>=0) {
 				me.bindings[variable].splice(i,1);
 			}
-			values.push(me.bindings[variable]);
 		});
-		var cps = crossproduct(values), initialized = new Set();
-		cps.forEach(function(cp) {
-			var done = new Set();
-			cp.forEach(function(instance) {
-				if(!initialized.has(instance)) {
-					me.crossProducts.set(instance,[]);
-					initialized.add(instance);
+		variables.forEach(function(variable) {
+			if(instance instanceof me.domain[variable]) {
+				var crossproducts = me.crossProducts.get(variable);
+				if(crossproducts) {
+					for(var i=crossproducts.length-1;i>=0;i--) {
+						if(crossproducts[i].indexOf(instance)>=0) {
+							var activation = me.activations.get(crossproducts[i]);
+							crossproducts.splice(i,1);
+							if(activation) {
+								activation.delete();
+							}
+						}
+					}
 				}
-				if(!done.has(instance)) {
-					me.crossProducts.get(instance).push(cp);
-					done.add(instance);
-				}
-			});
+			}
 		});
-		rule.test(instance);
 	}
 	Rule.prototype.test = function(instance,key) { 
 		var me = this, matches, activations = [], tests = new Map(), variables = Object.keys(me.bindings);
 		if(!instance || !key || variables.some(function(variable) { return instance instanceof me.domain[variable] && me.range[variable][key]; })) {
 			if(instance) {
 				variables.forEach(function(variable) {
-					if(instance instanceof me.domain[variable]) {
+					if(instance instanceof me.domain[variable] && (!key || me.range[variable][key])) {
 						var crossproducts = me.crossProducts.get(variable);
 						if(crossproducts) {
 							var crossproductstotest = [];
@@ -224,7 +224,7 @@
 	}
 	Activation.prototype.execute = function() {
 		if(RuleReactor.tracelevel>0) {
-			Console.log("Executing: ",this.rule,this.bindings);
+			Console.log("Firing: ",this.rule,this.bindings);
 		}
 		this.delete();
 		this.rule.action.apply(this.rule,this.bindings);
@@ -312,8 +312,7 @@
 										f.apply(value,arguments);
 										// re-test the rules that pattern match the key
 										Object.keys(instance.rules).forEach(function(rulename) {
-											var rule = instance.rules[rulename];
-											rule.test(instance,key);
+											instance.rules[rulename].test(instance,key);
 										});
 									}
 									Object.defineProperty(rrget.value,fname,{configurable:true,writable:true,value:newf});
@@ -401,14 +400,13 @@
 					}
 				});
 				// unbind from all associated rules
-				Object.keys(instance.rules).forEach(function(ruleinstance) {
-					var rule = instance.rules[ruleinstance];
-					rule.unbind(instance);
+				Object.keys(instance.rules).forEach(function(rulename) {
+					instance.rules[rulename].unbind(instance);
 				});
 
 			}
 		});
-		// re-test all associated rules after everything unbound
+		// re-test all associated rules after everything unbound, should we ??
 		instances.forEach(function(instance) {
 			if(instance && typeof(instance)==="object" && instance.rules) {
 				Object.keys(instance.rules).forEach(function(rulename) {

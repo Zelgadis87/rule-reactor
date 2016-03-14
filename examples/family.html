@@ -1,7 +1,10 @@
 <html>
 <body>
+
+<p>Open in debugger to see rule activity</p>
+
 <script src="../index.js"></script>
-<script>
+<script id="example">
 
 var not = RuleReactor.not;
 
@@ -35,7 +38,7 @@ RuleReactor.createRule("parent-child-remove",-1,{p1: Person,p2: Person},
 	function(p1,p2) {
 		p2.children.splice(p2.children.indexOf(p1),1);
 	});
-/*
+
 // trivial rules for testing
 RuleReactor.createRule("some-named",-1,{p1: Person},
 	function(p1) {
@@ -51,7 +54,7 @@ RuleReactor.createRule("every-named",-1,{p1: Person},
 	function(p1) {
 		console.log("not every named the same",p1);
 	});
-*/
+
 RuleReactor.trace(2);
 var mary = new Person("mary");
 var joe = new Person("joe");
@@ -69,6 +72,9 @@ RuleReactor.data.forEach(function(instance) {
 	console.log(obj);
 });
 
+</script>
 
+<script>
+document.write("<pre>" + document.getElementById("example").textContent + "</pre>"); 
 </script>
 </body></html>

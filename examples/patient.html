@@ -1,22 +1,23 @@
 <html>
 <body>
+
+<p>Rule base adapted from: http://www.csis.ysu.edu/~john/824/examples/EMH1.txt</p>
+
+<p>Open in debugger to see rule activity</p>
+
 <script src="../index.js"></script>
-
-Rule base adapted from: http://www.csis.ysu.edu/~john/824/examples/EMH1.txt
-
-<script id="rulebase">
-
+<script id="example">
 var not = RuleReactor.not;
 var insert = RuleReactor.insert;
 
+// define the business object model consisting of
+// Patient, Diagnosis, and Treatment. Diagnosis
+// and Treament instances will be created by rules.
 
 function Patient() { 
 	this.diagnosis = null;
 	this.treatment = null;
 }
- 
-// These classes represent conclusions which we may assign
-// values to as a result of the inference.
 
 function Diagnosis(name,reason) {
 	this.name = name;
@@ -26,13 +27,12 @@ function Treatment(name) {
 	this.name = name;
 }
 
-
-// In its simplest form, a rule just boolean condition function which is a
+// In its simplest form, a rule is just boolean condition function which is a
 // "template" that the inference engine will try to match to some
-// fact. And a function to execute if the condition is true. In this case, 
+// fact. And, a function to execute if the condition is true. In this case, 
 // it matches a Patient with specific values for fever, spots, and innoculated 
-// (the other values don't matter). In this case, we modify the matching Patient
-// to have the diagnosis measles.
+// and we modify the matching Patient to have the diagnosis measles.
+
 RuleReactor.createRule("Measles",0,{p: Patient},
 	function(p1) {
 		return p1.fever=="high" && p1.spots==true && p1.innoculated==false;
@@ -42,6 +42,7 @@ RuleReactor.createRule("Measles",0,{p: Patient},
 	});
 
 // of course, there are lots of other things that could be wrong
+
 RuleReactor.createRule("Allergy1",0,{p: Patient},
 	function(p1) {
 		return p1.spots==true && (p1.fever!=="high" || p1.innoculated==true);
@@ -95,15 +96,20 @@ RuleReactor.createRule("Bed Rest",0,{p: Patient, d: Diagnosis},
 
 // data matched by the rules is just JavaScript class instances inserted into the RuleReactor
 
-RuleReactor.trace(1);
+RuleReactor.trace(2);
 var p = new Patient();
 p.fever = "low";
 p.spots = true;
 p.rash = false;
 p.soreThroat = false;
 p.innoculated = false;
+RuleReactor.insert(p);
+RuleReactor.remove(p); // adding and removing is just to demonstrate rull activation and deactivation
 RuleReactor.insert(p,true);
 
+</script>
 
+<script>
+document.write("<pre>" + document.getElementById("example").textContent + "</pre>"); 
 </script>
 </body></html>
