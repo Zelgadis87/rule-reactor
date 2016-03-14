@@ -5,32 +5,32 @@
 //MIT License - http://opensource.org/licenses/mit-license.php
 (function() {
 	"use strict";
-	
+
 	var RuleReactor = {};
-	
+
 	function crossproduct(arrays,rowtest,rowaction) {
-	  var result = [],
-      indices = Array(arrays.length);
-	  (function backtracking(index) {
-	    if(index === arrays.length) {
-	    	var row = arrays.map(function(array,index) {
-	            return array[indices[index]];
-	        });
-	    	if(!rowtest) {
-	    		return result.push((rowaction ? rowaction(row) : row));
-	    	} else if(rowtest(row)) {
-	    		return result.push((rowaction ? rowaction(row) : row));
-	    	}
-	    	return result.length;
-	    }
-	    for(var i=0; i<arrays[index].length; ++i) {
-	      indices[index] = i;
-	      backtracking(index+1);
-	    }
-	  })(0);
-	  return result;
+		var result = [],
+		indices = Array(arrays.length);
+		(function backtracking(index) {
+			if(index === arrays.length) {
+				var row = arrays.map(function(array,index) {
+					return array[indices[index]];
+				});
+				if(!rowtest) {
+					return result.push((rowaction ? rowaction(row) : row));
+				} else if(rowtest(row)) {
+					return result.push((rowaction ? rowaction(row) : row));
+				}
+				return result.length;
+			}
+			for(var i=0; i<arrays[index].length; ++i) {
+				indices[index] = i;
+				backtracking(index+1);
+			}
+		})(0);
+		return result;
 	}
-	
+
 
 	function compile(rule) {
 		Object.keys(rule.domain).forEach(function(variable) {
@@ -54,24 +54,24 @@
 			// extract instance keys from condition using a side-effect of replace
 			var condition = rule.condition+"";
 			condition.replace(new RegExp("(\\b"+variable+"\\.\\w+\\b)","g"),
-				function(match) { 
-					var parts = match.split("."),key = parts[1];
-					// cache reactive keys on class prototype
-					cons.prototype.activeKeys[key] = true;
-					// cache what keys are associated with what variables
-					rule.range[variable][key] = (rule.range[variable][key] ? rule.range[variable][key] : true);
-					// don't really do a replacement!
-					return match;
+					function(match) { 
+				var parts = match.split("."),key = parts[1];
+				// cache reactive keys on class prototype
+				cons.prototype.activeKeys[key] = true;
+				// cache what keys are associated with what variables
+				rule.range[variable][key] = (rule.range[variable][key] ? rule.range[variable][key] : true);
+				// don't really do a replacement!
+				return match;
 			});
 		});
 	}
-	
+
 	var Console = {};
 	Console.log = function() { 
 		console.log.apply(console,arguments); 
 	}
-	
-	
+
+
 	function Rule(name,salience,domain,condition,action) {
 		this.name = name;
 		this.salience = salience;
@@ -93,23 +93,23 @@
 			}
 			values.push(me.bindings[variable]);
 		});
-		var cps = crossproduct(values,
+		crossproduct(values,
 				function(row) { 
-					return row.indexOf(instance)>=0; 
-				},
-				function(row) {
-					row.forEach(function(instance,column) {
-						var variable = variables[column];
-						var crossproducts = me.crossProducts.get(variable);
-						if(!crossproducts) {
-							crossproducts = [];
-							me.crossProducts.set(variable,crossproducts);
-						}
-						crossproducts.push(row);
-					});
-					return row;
+			return row.indexOf(instance)>=0; 
+		},
+		function(row) {
+			row.forEach(function(instance,column) {
+				var variable = variables[column];
+				var crossproducts = me.crossProducts.get(variable);
+				if(!crossproducts) {
+					crossproducts = [];
+					me.crossProducts.set(variable,crossproducts);
 				}
-			);
+				crossproducts.push(row);
+			});
+			return row;
+		}
+		);
 	};
 	Rule.prototype.unbind = function(instance) {
 		var me = this, variables = Object.keys(me.bindings);
@@ -137,7 +137,7 @@
 		});
 	}
 	Rule.prototype.test = function(instance,key) { 
-		var me = this, matches, activations = [], tests = new Map(), variables = Object.keys(me.bindings);
+		var me = this, activations = [], tests = new Map(), variables = Object.keys(me.bindings);
 		if(!instance || !key || variables.some(function(variable) { return instance instanceof me.domain[variable] && me.range[variable][key]; })) {
 			if(instance) {
 				variables.forEach(function(variable) {
@@ -169,8 +169,8 @@
 					});
 				});
 			}
-			tests.forEach(function(crossProducts,variable) {
-				var matches = [], activations = [];
+			tests.forEach(function(crossProducts) {
+				var activations = [];
 				crossProducts.forEach(function(crossProduct) {
 					if(me.condition.apply(me,crossProduct)) {
 						var activation = new Activation(me,crossProduct);
@@ -201,7 +201,7 @@
 					}
 				});
 			} else {
-				me.crossProducts.forEach(function(crossProducts,variable) {
+				me.crossProducts.forEach(function(crossProducts) {
 					crossProducts.forEach(function(crossProduct) {
 						activations = me.activations.get(crossProduct);
 						if(activations) {
@@ -215,7 +215,7 @@
 			}
 		}
 	}
-	
+
 	function Activation(rule,bindings) {
 		this.rule = rule;
 		this.bindings = bindings;
@@ -259,7 +259,7 @@
 				instance.constructor.instances = (instance.constructor.instances ? instance.constructor.instances : []);
 				instance.constructor.instances.push(instance);
 				// patch any keys on instance or those identified as active while compiling
-				
+
 				var keys = Object.keys(instance);
 				if(instance.activeKeys) {
 					Object.keys(instance.activeKeys).forEach(function(key) {
@@ -390,7 +390,7 @@
 						} else {
 							if(desc.get.originalDescriptor.value instanceof Array || Array.isArray(desc.get.originalDescriptor.value)) {
 								if(instance[key] instanceof Array || Array.isArray(instance[key])) {
-									var args = [0,instance[key]].concat(desc.get.originalDescriptor.value)
+									var args = [0,instance[key]].concat(desc.get.originalDescriptor.value);
 									instance[key].splice.apply(instance[key],args);
 								} else {
 									instance[key] = desc.get.originalDescriptor.value;

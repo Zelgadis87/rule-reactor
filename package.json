@@ -1,6 +1,6 @@
 {
   "name": "rule-reactor",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "A light weight, fast, expressive forward chaining business rule engine based on reactive programming techniques rather than Rete.",
   "main": "index.js",
   "client": "./browser/rule-reactor.js",
