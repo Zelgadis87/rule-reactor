@@ -56,7 +56,7 @@
 				if(k===0) { return; }
 				var row = 0;
 				array.map(function(item) {
-					rows[row] =  Array(arrays.length);
+					rows[row] =  (rows[row] ? rows[row] : Array(arrays.length));
 					rows[row][0] = data1;
 					rows[row][k] = item;
 					row++;
@@ -68,7 +68,7 @@
 			if(rowaction) {
 				rows.map(function(row,i) { rows[i] = rowaction(row,i); });
 			}
-			result.splice(0,0,rows);
+			result.splice(0,0,...rows);
 		});
 
 		return result;
@@ -161,23 +161,30 @@
 			}
 			values.push(me.bindings[variable]);
 		});
-		crossproduct(values,
-				function(row) { 
-			return row.indexOf(instance)>=0; 
-		},
-		function(row) {
-			row.forEach(function(instance,column) {
-				var variable = variables[column];
-				var crossproducts = me.crossProducts.get(variable);
-				if(!crossproducts) {
-					crossproducts = [];
-					me.crossProducts.set(variable,crossproducts);
-				}
-				crossproducts.push(row);
-			});
-			return row;
+		if(variables.every(function(variable) {
+			return me.bindings[variable] && me.bindings[variable].length>0;
+		})) {
+			var crossproducts = crossproduct(values,
+					function(row) { 
+				return row.indexOf(instance)>=0; 
+			},
+			function(row) {
+				row.forEach(function(instance,column) {
+					var variable = variables[column];
+					var crossproducts = me.crossProducts.get(variable);
+					if(!crossproducts) {
+						crossproducts = [];
+						me.crossProducts.set(variable,crossproducts);
+					}
+					crossproducts.push(row);
+				});
+				return row;
+			}
+			);
+			if(crossproducts) {
+				me.test(); // need to test entire rule since new instance will
+			}
 		}
-		);
 	};
 	Rule.prototype.unbind = function(instance) {
 		var me = this, variables = Object.keys(me.bindings);
@@ -203,6 +210,11 @@
 				}
 			}
 		});
+		/*
+		var activation = me.activations.get(instance);
+		if(activation) {
+			activation.delete(instance);
+		}*/
 	}
 	Rule.prototype.test = function(instance,key) { 
 		var me = this, activations = [], tests = new Map(), variables = Object.keys(me.bindings);
@@ -226,16 +238,53 @@
 						}
 					}
 				});
+				/*
+				variables.forEach(function(variable) {
+					if(instance instanceof me.domain[variable] && (!key || me.range[variable][key])) {
+						variables.forEach(function(variable) {
+							values.push(me.bindings[variable]);
+						});
+						crossproduct(values,
+								function(row) { 
+							return row.indexOf(instance)>=0 && me.condition.apply(me,row); 
+						},
+						function(row) {
+							row.forEach(function(instance,column) {
+								var variable = variables[column];
+								var crossproducts = me.crossProducts.get(instance);
+								if(!crossproducts) {
+									crossproducts = [];
+									me.crossProducts.set(instance,crossproducts);
+								}
+								crossproducts.push(row);
+							});
+							return row;
+						}
+						);
+					}
+				});
+				*/
 			} else {
 				me.crossProducts.forEach(function(crossProducts,variable) {
 					tests.set(variable,crossProducts);
 					crossProducts.forEach(function(crossProduct) {
-						activations = me.activations.get(crossProduct);
-						if(activations) {
-							activations.forEach(function(activation) { activation.delete(); });
+						var activation = me.activations.get(crossProduct);
+						if(activation) {
+							activation.delete();
 						}
 					});
 				});
+				/*
+				me.crossProducts.forEach(function(crossProducts,variable) {
+					tests.set(variable,crossProducts);
+				});
+
+				me.activations.(crossProduct);
+					if(activations) {
+						activations.forEach(function(activation) { activation.delete(); });
+					}
+				});
+				*/
 			}
 			tests.forEach(function(crossProducts) {
 				crossProducts.forEach(function(crossProduct) {
