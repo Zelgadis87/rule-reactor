@@ -31,7 +31,50 @@
 		return result;
 	}
 
+	function crossproduct(arrays,rowtest,rowaction) {
+		var factor = 0, result;
+		arrays.map(function(array) {
+			factor = Math.max(factor,array.length);
+		});
 
+		if(arrays.length===0) {
+			return arrays.slice();
+		}
+		if(arrays.length===1) {
+			result = arrays.slice();
+			if(rowtest) {
+				result = result.filter(function(row,i) {  return rowtest(row,i); });
+			}
+			if(rowaction) {
+				result.map(function(row,i) { result[i] = rowaction(row,i); });
+			}
+			return result;
+		}
+		result = [];
+		arrays[0].map(function(data1) {
+			var rows = Array(factor);
+			arrays.map(function(array,k) {
+				if(k===0) { return; }
+				var row = 0;
+				array.map(function(item) {
+					rows[row] =  Array(arrays.length);
+					rows[row][0] = data1;
+					rows[row][k] = item;
+					row++;
+				});
+			});
+			if(rowtest) {
+				rows = rows.filter(function(row,i) { return rowtest(row,i); });
+			}
+			if(rowaction) {
+				rows.map(function(row,i) { rows[i] = rowaction(row,i); });
+			}
+			result.splice(0,0,rows);
+		});
+
+		return result;
+	}
+	
 	function compile(rule) {
 		Object.keys(rule.domain).forEach(function(variable) {
 			var cons = rule.domain[variable];
@@ -39,7 +82,7 @@
 			cons.prototype.rules[rule.name] = rule;
 			cons.prototype.activeKeys = (cons.prototype.activeKeys ? cons.prototype.activeKeys : {});
 			cons.exists = function(f) {
-				f = (f ? f : function() { return true; })
+				f = (f ? f : function() { return true; });
 				return cons.instances && cons.instances.some(function(instance) {
 					return f(instance);
 				});
@@ -69,8 +112,34 @@
 	var Console = {};
 	Console.log = function() { 
 		console.log.apply(console,arguments); 
-	}
+	};
 
+	function Activation(rule,bindings) {
+		this.rule = rule;
+		this.bindings = bindings;
+		if(RuleReactor.tracelevel>1) {
+			Console.log("Activating: ",this.rule,this.bindings);
+		}
+	}
+	Activation.prototype.execute = function() {
+		if(RuleReactor.tracelevel>0) {
+			Console.log("Firing: ",this.rule,this.bindings);
+		}
+		this.delete();
+		this.rule.action.apply(this.rule,this.bindings);
+	}
+	Activation.prototype.delete = function(instance) {
+		if(!instance || this.bindings.indexOf(instance)>=0) {
+			if(RuleReactor.tracelevel>1) {
+				Console.log("Deactivating: ",this.rule,this.bindings);
+			}
+			this.rule.activations.delete(this);
+			var i = RuleReactor.agenda.indexOf(this);
+			if(i>=0) {
+				RuleReactor.agenda.splice(i,1);
+			}
+		}
+	}
 
 	function Rule(name,salience,domain,condition,action) {
 		this.name = name;
@@ -170,7 +239,6 @@
 				});
 			}
 			tests.forEach(function(crossProducts) {
-				var activations = [];
 				crossProducts.forEach(function(crossProduct) {
 					if(me.condition.apply(me,crossProduct)) {
 						var activation = new Activation(me,crossProduct);
@@ -212,33 +280,6 @@
 			}
 			if(retest) {
 				me.test(instance);
-			}
-		}
-	}
-
-	function Activation(rule,bindings) {
-		this.rule = rule;
-		this.bindings = bindings;
-		if(RuleReactor.tracelevel>1) {
-			Console.log("Activating: ",this.rule,this.bindings);
-		}
-	}
-	Activation.prototype.execute = function() {
-		if(RuleReactor.tracelevel>0) {
-			Console.log("Firing: ",this.rule,this.bindings);
-		}
-		this.delete();
-		this.rule.action.apply(this.rule,this.bindings);
-	}
-	Activation.prototype.delete = function(instance) {
-		if(!instance || this.bindings.indexOf(instance)>=0) {
-			if(RuleReactor.tracelevel>1) {
-				Console.log("Deactivating: ",this.rule,this.bindings);
-			}
-			this.rule.activations.delete(this);
-			var i = RuleReactor.agenda.indexOf(this);
-			if(i>=0) {
-				RuleReactor.agenda.splice(i,1);
 			}
 		}
 	}
@@ -449,4 +490,6 @@
 		this.RuleReactor = RuleReactor;
 	}
 }).call((typeof(window)!=="undefined" ? window : (typeof(module)!=="undefined" ? module : null)));
+
+
 },{}]},{},[1]);

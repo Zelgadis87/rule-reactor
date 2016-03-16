@@ -34,37 +34,37 @@ function Treatment(name) {
 // and we modify the matching Patient to have the diagnosis measles.
 
 RuleReactor.createRule("Measles",0,{p: Patient},
-	function(p1) {
-		return p1.fever=="high" && p1.spots==true && p1.innoculated==false;
+	function(p) {
+		return p.fever=="high" && p.spots==true && p.innoculated==false;
 	},
-	function(p1) {
-		p1.diagnosis = new Diagnosis("measles","High temp, spots, and no innoculation for measles.");
+	function(p) {
+		p.diagnosis = new Diagnosis("measles","High temp, spots, and no innoculation for measles.");
 	});
 
 // of course, there are lots of other things that could be wrong
 
 RuleReactor.createRule("Allergy1",0,{p: Patient},
-	function(p1) {
-		return p1.spots==true && (p1.fever!=="high" || p1.innoculated==true);
+	function(p) {
+		return p.spots==true && (p.fever!=="high" || p.innoculated==true);
 	},
-	function(p1) {
-		p1.diagnosis = new Diagnosis("allergy","Allergy diagnosed from presence of spots and no fever or is innoculated for measles.");
+	function(p) {
+		p.diagnosis = new Diagnosis("allergy","Allergy diagnosed from presence of spots and no fever or is innoculated for measles.");
 	});
 
 RuleReactor.createRule("Allergy2",0,{p: Patient},
-	function(p1) {
-		return p1.rash==true;
+	function(p) {
+		return p.rash==true;
 	},
-	function(p1) {
-		p1.diagnosis = new Diagnosis("allergy","Allergy diagnosed from presence of rash.");
+	function(p) {
+		p.diagnosis = new Diagnosis("allergy","Allergy diagnosed from presence of rash.");
 	});
 
 RuleReactor.createRule("Flu",0,{p: Patient},
-	function(p1) {
-		return p1.soreThroat==true && (p1.fever=="mild" || p1.fever=="high");
+	function(p) {
+		return p.soreThroat==true && (p.fever=="mild" || p.fever=="high");
 	},
-	function(p1) {
-		p1.diagnosis = new Diagnosis("flu","Flue diagnosed from sore throat and mild to high fever.");
+	function(p) {
+		p.diagnosis = new Diagnosis("flu","Flue diagnosed from sore throat and mild to high fever.");
 	});
 
 // Rules for recommending treatments on the basis of Diagnosis
@@ -96,7 +96,7 @@ RuleReactor.createRule("Bed Rest",0,{p: Patient, d: Diagnosis},
 
 // data matched by the rules is just JavaScript class instances inserted into the RuleReactor
 
-RuleReactor.trace(2);
+RuleReactor.trace(3);
 var p = new Patient();
 p.fever = "low";
 p.spots = true;
@@ -104,7 +104,7 @@ p.rash = false;
 p.soreThroat = false;
 p.innoculated = false;
 RuleReactor.insert(p);
-RuleReactor.remove(p); // adding and removing is just to demonstrate rull activation and deactivation
+RuleReactor.remove(p); // adding and removing is just to demonstrate rule activation and deactivation
 RuleReactor.insert(p,true);
 
 </script>

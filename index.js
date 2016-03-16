@@ -30,7 +30,50 @@
 		return result;
 	}
 
+	function crossproduct(arrays,rowtest,rowaction) {
+		var factor = 0, result;
+		arrays.map(function(array) {
+			factor = Math.max(factor,array.length);
+		});
 
+		if(arrays.length===0) {
+			return arrays.slice();
+		}
+		if(arrays.length===1) {
+			result = arrays.slice();
+			if(rowtest) {
+				result = result.filter(function(row,i) {  return rowtest(row,i); });
+			}
+			if(rowaction) {
+				result.map(function(row,i) { result[i] = rowaction(row,i); });
+			}
+			return result;
+		}
+		result = [];
+		arrays[0].map(function(data1) {
+			var rows = Array(factor);
+			arrays.map(function(array,k) {
+				if(k===0) { return; }
+				var row = 0;
+				array.map(function(item) {
+					rows[row] =  Array(arrays.length);
+					rows[row][0] = data1;
+					rows[row][k] = item;
+					row++;
+				});
+			});
+			if(rowtest) {
+				rows = rows.filter(function(row,i) { return rowtest(row,i); });
+			}
+			if(rowaction) {
+				rows.map(function(row,i) { rows[i] = rowaction(row,i); });
+			}
+			result.splice(0,0,rows);
+		});
+
+		return result;
+	}
+	
 	function compile(rule) {
 		Object.keys(rule.domain).forEach(function(variable) {
 			var cons = rule.domain[variable];
@@ -446,3 +489,4 @@
 		this.RuleReactor = RuleReactor;
 	}
 }).call((typeof(window)!=="undefined" ? window : (typeof(module)!=="undefined" ? module : null)));
+
