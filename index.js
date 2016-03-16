@@ -182,7 +182,7 @@
 			}
 			);
 			if(crossproducts) {
-				me.test(); // need to test entire rule since new instance will
+				me.test(instance);
 			}
 		}
 	};
