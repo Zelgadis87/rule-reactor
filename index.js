@@ -68,7 +68,7 @@
 			if(rowaction) {
 				rows.map(function(row,i) { rows[i] = rowaction(row,i); });
 			}
-			result.splice(0,0,...rows);
+			result.splice.apply(result,[0,0].concat(rows));
 		});
 
 		return result;

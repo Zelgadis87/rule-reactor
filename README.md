@@ -29,7 +29,11 @@ v0.0.2 Salience ordering is not working for the agenda.
 
 # Updates (reverse chronological order)
 
-2016-03-16 v0.0.3 Reworked crossproduct so that it is non-recursive so that more joins can be supported.
+Currently ALPHA
+
+2016-03-16 v0.0.4 Further optimization.
+
+2016-03-16 v0.0.3 Unpublished. Reworked crossproduct so that it is non-recursive so that more joins can be supported.
 
 2016-03-13 v0.0.2 Performance improvements
 
