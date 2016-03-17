@@ -4,10 +4,14 @@
 //MIT License - http://opensource.org/licenses/mit-license.php
 (function() {
 	"use strict";
+	
+	// Throughout this code there are place map is used where forEach would be expected. This is because map is considerably faster
+	// in some JS engines in some places even though one would expect it to be allocating memory and we ignore the return value! 
 
 	var RuleReactor = {};
 
-	function crossproduct(arrays,rowtest,rowaction) {
+	// better on Firefox
+	function crossproduct1(arrays,rowtest,rowaction) {
 		var result = [],
 		indices = Array(arrays.length);
 		(function backtracking(index) {
@@ -30,49 +34,45 @@
 		return result;
 	}
 
-	function crossproduct(arrays,rowtest,rowaction) {
-		var factor = 0, result;
-		arrays.map(function(array) {
-			factor = Math.max(factor,array.length);
-		});
-
-		if(arrays.length===0) {
-			return arrays.slice();
+	// somewhat better on Chrome and far better on Edge
+	function crossproduct3(arrays,rowtest,rowaction) {
+		  // Calculate the number of elements needed in the result
+		  var result_elems = 1, row_size = arrays.length;
+		  arrays.map(function(array) {
+				result_elems *= array.length;
+		  });
+		  var temp = new Array(result_elems), result = [];
+		
+		  // Go through each array and add the appropriate element to each element of the temp
+		  var scale_factor = result_elems;
+		  arrays.map(function(array)
+		  {
+		    var set_elems = array.length;
+		    scale_factor /= set_elems;
+		    for(var i=result_elems-1;i>=0;i--) {
+		    	temp[i] = (temp[i] ? temp[i] : []);
+		    	var pos = i / scale_factor % set_elems;
+		    	if(pos < 1 || pos % 1 <= .5) {
+		    		pos = Math.floor(pos);
+		    	} else {
+		    		pos = Math.min(array.length-1,Math.ceil(pos));
+		    	}
+		    	temp[i].push(array[pos]);
+		    	if(temp[i].length===row_size) {
+		    		var pass = (rowtest ? rowtest(temp[i]) : true);
+		    		if(pass) {
+		    			if(rowaction) {
+		    				result.push(rowaction(temp[i]));
+		    			} else {
+		    				result.push(temp[i]);
+		    			}
+		    		}
+		    	}
+		    }
+		  });
+	  	  return result;
 		}
-		if(arrays.length===1) {
-			result = arrays.slice();
-			if(rowtest) {
-				result = result.filter(function(row,i) {  return rowtest(row,i); });
-			}
-			if(rowaction) {
-				result.map(function(row,i) { result[i] = rowaction(row,i); });
-			}
-			return result;
-		}
-		result = [];
-		arrays[0].map(function(data1) {
-			var rows = Array(factor);
-			arrays.map(function(array,k) {
-				if(k===0) { return; }
-				var row = 0;
-				array.map(function(item) {
-					rows[row] =  (rows[row] ? rows[row] : Array(arrays.length));
-					rows[row][0] = data1;
-					rows[row][k] = item;
-					row++;
-				});
-			});
-			if(rowtest) {
-				rows = rows.filter(function(row,i) { return rowtest(row,i); });
-			}
-			if(rowaction) {
-				rows.map(function(row,i) { rows[i] = rowaction(row,i); });
-			}
-			result.splice.apply(result,[0,0].concat(rows));
-		});
-
-		return result;
-	}
+	var crossproduct = crossproduct3;
 	
 	function compile(rule) {
 		Object.keys(rule.domain).forEach(function(variable) {
@@ -108,10 +108,13 @@
 		});
 	}
 
+	// dummy console so logging can easily be removed
 	var Console = {};
 	Console.log = function() { 
 		console.log.apply(console,arguments); 
 	};
+	// uncomment line below to remove logging
+	//Console.log = function() {};
 
 	function Activation(rule,bindings) {
 		this.rule = rule;
@@ -155,7 +158,7 @@
 	} 
 	Rule.prototype.bind = function(instance) {
 		var me = this, variables = Object.keys(me.bindings), values = [];
-		variables.forEach(function(variable) {
+		variables.map(function(variable) {
 			if(instance instanceof me.domain[variable]) {
 				me.bindings[variable].push(instance);
 			}
@@ -166,20 +169,23 @@
 		})) {
 			var crossproducts = crossproduct(values,
 					function(row) { 
-				return row.indexOf(instance)>=0; 
-			},
-			function(row) {
-				row.forEach(function(instance,column) {
-					var variable = variables[column];
-					var crossproducts = me.crossProducts.get(variable);
-					if(!crossproducts) {
-						crossproducts = [];
-						me.crossProducts.set(variable,crossproducts);
+						return row.indexOf(instance)>=0; 
+					},
+					function(row) {
+						row.forEach(function(instance,column) {
+							if(RuleReactor.tracelevel>2) {
+								Console.log("Join: ",me,row);
+							}
+							var variable = variables[column];
+							var crossproducts = me.crossProducts.get(variable);
+							if(!crossproducts) {
+								crossproducts = [];
+								me.crossProducts.set(variable,crossproducts);
+							}
+							crossproducts.push(row);
+						});
+						return row;
 					}
-					crossproducts.push(row);
-				});
-				return row;
-			}
 			);
 			if(crossproducts) {
 				me.test(instance);
@@ -188,19 +194,16 @@
 	};
 	Rule.prototype.unbind = function(instance) {
 		var me = this, variables = Object.keys(me.bindings);
-		variables.forEach(function(variable) {
-			var i = me.bindings[variable].indexOf(instance);
-			if(i>=0) {
-				me.bindings[variable].splice(i,1);
-			}
-		});
-		variables.forEach(function(variable) {
+		variables.map(function(variable) {
 			if(instance instanceof me.domain[variable]) {
 				var crossproducts = me.crossProducts.get(variable);
 				if(crossproducts) {
 					for(var i=crossproducts.length-1;i>=0;i--) {
 						if(crossproducts[i].indexOf(instance)>=0) {
 							var activation = me.activations.get(crossproducts[i]);
+							if(RuleReactor.tracelevel>2) {
+								Console.log("Unjoin: ",me,crossproducts[i]);
+							}
 							crossproducts.splice(i,1);
 							if(activation) {
 								activation.delete();
@@ -210,17 +213,18 @@
 				}
 			}
 		});
-		/*
-		var activation = me.activations.get(instance);
-		if(activation) {
-			activation.delete(instance);
-		}*/
+		variables.map(function(variable) {
+			var i = me.bindings[variable].indexOf(instance);
+			if(i>=0) {
+				me.bindings[variable].splice(i,1);
+			}
+		});
 	}
 	Rule.prototype.test = function(instance,key) { 
 		var me = this, activations = [], tests = new Map(), variables = Object.keys(me.bindings);
 		if(!instance || !key || variables.some(function(variable) { return instance instanceof me.domain[variable] && me.range[variable][key]; })) {
 			if(instance) {
-				variables.forEach(function(variable) {
+				variables.map(function(variable) {
 					if(instance instanceof me.domain[variable] && (!key || me.range[variable][key])) {
 						var crossproducts = me.crossProducts.get(variable);
 						if(crossproducts) {
@@ -234,36 +238,12 @@
 									}
 								}
 							});
-							tests.set(variable,crossproductstotest);
+							if(crossproductstotest.length>0) {
+								tests.set(variable,crossproductstotest);
+							}
 						}
 					}
 				});
-				/*
-				variables.forEach(function(variable) {
-					if(instance instanceof me.domain[variable] && (!key || me.range[variable][key])) {
-						variables.forEach(function(variable) {
-							values.push(me.bindings[variable]);
-						});
-						crossproduct(values,
-								function(row) { 
-							return row.indexOf(instance)>=0 && me.condition.apply(me,row); 
-						},
-						function(row) {
-							row.forEach(function(instance,column) {
-								var variable = variables[column];
-								var crossproducts = me.crossProducts.get(instance);
-								if(!crossproducts) {
-									crossproducts = [];
-									me.crossProducts.set(instance,crossproducts);
-								}
-								crossproducts.push(row);
-							});
-							return row;
-						}
-						);
-					}
-				});
-				*/
 			} else {
 				me.crossProducts.forEach(function(crossProducts,variable) {
 					tests.set(variable,crossProducts);
@@ -274,17 +254,6 @@
 						}
 					});
 				});
-				/*
-				me.crossProducts.forEach(function(crossProducts,variable) {
-					tests.set(variable,crossProducts);
-				});
-
-				me.activations.(crossProduct);
-					if(activations) {
-						activations.forEach(function(activation) { activation.delete(); });
-					}
-				});
-				*/
 			}
 			tests.forEach(function(crossProducts) {
 				crossProducts.forEach(function(crossProduct) {
@@ -301,7 +270,7 @@
 		var me = this, activations, variables = Object.keys(me.bindings);
 		if((!instance || !key || variables.some(function(variablename) { return instance instanceof me.domain[variablename] && me.range[variablename][key]; }))) {
 			if(instance) {
-				variables.forEach(function(variable) {
+				variables.map(function(variable) {
 					if(instance instanceof me.domain[variable]) {
 						var crossproducts = me.crossProducts.get(variable);
 						if(crossproducts) {
@@ -345,6 +314,9 @@
 		instances.forEach(function(instance) {
 			// don't bother processing instances that don't impact rules or are already in the data store
 			if(instance && typeof(instance)==="object" && !RuleReactor.data.has(instance)) {
+				if(RuleReactor.tracelevel>2) {
+					Console.log("Insert: ",instance);
+				}
 				instance.constructor.instances = (instance.constructor.instances ? instance.constructor.instances : []);
 				instance.constructor.instances.push(instance);
 				// patch any keys on instance or those identified as active while compiling
@@ -450,24 +422,14 @@
 			RuleReactor.run();
 		}
 	}
-	RuleReactor.reset = function(facts) {
-		Object.keys(RuleReactor.rules).forEach(function(rulename) {
-			RuleReactor.rules[rulename].reset();
-		});
-		if(facts) {
-			var data = [];
-			RuleReactor.data.forEach(function(instance) {
-				data.push(instance);
-			});
-			data.push(false);
-			RuleReactor.remove(false);
-		}
-	}
 	RuleReactor.remove = function() {
 		var run = run = (arguments[arguments.length-1] instanceof Object ? false : arguments[arguments.length-1]), hasimpact = false;
 		var instances = [].slice.call(arguments);
 		instances.forEach(function(instance) {
 			if(instance && typeof(instance)==="object") {
+				if(RuleReactor.tracelevel>2) {
+					Console.log("Remove: ",instance);
+				}
 				// remove from data
 				RuleReactor.data.delete(instance);
 				// restore instance properties
@@ -509,6 +471,19 @@
 			RuleReactor.run();
 		}
 	}
+	RuleReactor.reset = function(facts) {
+		Object.keys(RuleReactor.rules).forEach(function(rulename) {
+			RuleReactor.rules[rulename].reset();
+		});
+		if(facts) {
+			var data = [];
+			RuleReactor.data.forEach(function(instance) {
+				data.push(instance);
+			});
+			data.push(false);
+			RuleReactor.remove(false);
+		}
+	}
 	RuleReactor.run = function(max) {
 		max = (max ? max : Infinity);
 		RuleReactor.run.executions = 0;
@@ -528,6 +503,7 @@
 	RuleReactor.not = function(value) {
 		return !value;
 	}
+	
 
 	if (this.exports) {
 		this.exports  = RuleReactor;
@@ -538,4 +514,3 @@
 		this.RuleReactor = RuleReactor;
 	}
 }).call((typeof(window)!=="undefined" ? window : (typeof(module)!=="undefined" ? module : null)));
-
