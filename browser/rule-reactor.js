@@ -5,67 +5,11 @@
 //MIT License - http://opensource.org/licenses/mit-license.php
 (function() {
 	"use strict";
-	
+
 	// Throughout this code there are place map is used where forEach would be expected. This is because map is considerably faster
 	// in some JS engines in some places even though one would expect it to be allocating memory and we ignore the return value! 
 
 	var RuleReactor = {};
-	
-	function intersection(array) {
-		var arrays = arguments.length;
-		// fast path when we have nothing to intersect
-		if (arrays === 0) {
-			return [];
-		}
-		if (arrays === 1) {
-			return intersection(array,array);
-		}
-		 
-		var arg   = 0, // current arg index
-				bits  = 0, // bits to compare at the end
-				count = 0, // unique item count
-				items = [], // unique items
-				match = [], // item bits
-				seen  = new Map(); // item -> index map
-		 
-		do {
-			var arr = arguments[arg],
-					len = arr.length,
-					bit = 1 << arg, // each array is assigned a bit
-					i   = 0;
-		 
-			if (!len) {
-				return []; // bail out if empty array
-			}
-		 
-			bits |= bit; // add the bit to the collected bits
-			do {
-				var value = arr[i],
-						index = seen.get(value); // find existing item index
-		 
-				if (index === undefined) { // new item
-					count++;
-					index = match.length;
-					seen.set(value, index);
-					items[index] = value;
-					match[index] = bit;
-				} else { // update existing item
-					match[index] |= bit;
-				}
-			} while (++i < len);
-		} while (++arg < arrays);
-		 
-			var result = [],
-			i = 0;
-		 
-		do { // filter out items that don't have the full bitfield
-			if (match[i] === bits) {
-				result[result.length] = items[i];
-			}
-		} while (++i < count);
-		 
-			return result;
-	}
 
 	// better on Firefox
 	function crossproduct1(arrays,rowtest,rowaction) {
@@ -93,45 +37,45 @@
 
 	// somewhat better on Chrome and far better on Edge
 	function crossproduct2(arrays,rowtest,rowaction) {
-		  // Calculate the number of elements needed in the result
-		  var result_elems = 1, row_size = arrays.length;
-		  arrays.map(function(array) {
-				result_elems *= array.length;
-		  });
-		  var temp = new Array(result_elems), result = [];
-		
-		  // Go through each array and add the appropriate element to each element of the temp
-		  var scale_factor = result_elems;
-		  arrays.map(function(array)
-		  {
-		    var set_elems = array.length;
-		    scale_factor /= set_elems;
-		    for(var i=result_elems-1;i>=0;i--) {
-		    	temp[i] = (temp[i] ? temp[i] : []);
-		    	var pos = i / scale_factor % set_elems;
-		    	// deal with floating point results for indexes, this took a little experimenting
-		    	if(pos < 1 || pos % 1 <= .5) {
-		    		pos = Math.floor(pos);
-		    	} else {
-		    		pos = Math.min(array.length-1,Math.ceil(pos));
-		    	}
-		    	temp[i].push(array[pos]);
-		    	if(temp[i].length===row_size) {
-		    		var pass = (rowtest ? rowtest(temp[i]) : true);
-		    		if(pass) {
-		    			if(rowaction) {
-		    				result.push(rowaction(temp[i]));
-		    			} else {
-		    				result.push(temp[i]);
-		    			}
-		    		}
-		    	}
-		    }
-		  });
-	  	  return result;
-		}
+		// Calculate the number of elements needed in the result
+		var result_elems = 1, row_size = arrays.length;
+		arrays.map(function(array) {
+			result_elems *= array.length;
+		});
+		var temp = new Array(result_elems), result = [];
+
+		// Go through each array and add the appropriate element to each element of the temp
+		var scale_factor = result_elems;
+		arrays.map(function(array)
+				{
+			var set_elems = array.length;
+			scale_factor /= set_elems;
+			for(var i=result_elems-1;i>=0;i--) {
+				temp[i] = (temp[i] ? temp[i] : []);
+				var pos = i / scale_factor % set_elems;
+				// deal with floating point results for indexes, this took a little experimenting
+				if(pos < 1 || pos % 1 <= .5) {
+					pos = Math.floor(pos);
+				} else {
+					pos = Math.min(array.length-1,Math.ceil(pos));
+				}
+				temp[i].push(array[pos]);
+				if(temp[i].length===row_size) {
+					var pass = (rowtest ? rowtest(temp[i]) : true);
+					if(pass) {
+						if(rowaction) {
+							result.push(rowaction(temp[i]));
+						} else {
+							result.push(temp[i]);
+						}
+					}
+				}
+			}
+				});
+		return result;
+	}
 	var crossproduct = crossproduct2;
-	
+
 	function getFunctionArgs(f) {
 		var str = f+"";
 		var start = str.indexOf("(")+1;
@@ -169,16 +113,16 @@
 					condition.range = (condition.range ? condition.range : {})
 					condition.range[variable] = {};
 					(condition+"").replace(new RegExp("(\\b"+variable+"\\.\\w+\\b)","g"),
-						function(match) { 
-							var parts = match.split("."),key = parts[1];
-							// cache reactive keys on class prototype
-							cons.prototype.activeKeys[key] = true;
-							// cache what keys are associated with what variables
-							rule.range[variable][key] = (rule.range[variable][key] ? rule.range[variable][key] : true);
-							condition.range[variable][key] = (condition.range[variable][key] ? condition.range[variable][key] : true);
-							// don't really do a replacement!
-							return match;
-						}
+							function(match) { 
+						var parts = match.split("."),key = parts[1];
+						// cache reactive keys on class prototype
+						cons.prototype.activeKeys[key] = true;
+						// cache what keys are associated with what variables
+						rule.range[variable][key] = (rule.range[variable][key] ? rule.range[variable][key] : true);
+						condition.range[variable][key] = (condition.range[variable][key] ? condition.range[variable][key] : true);
+						// don't really do a replacement!
+						return match;
+					}
 					);
 				}
 			});
@@ -224,7 +168,7 @@
 			}
 		}
 	}
-	
+
 	function Rule(name,salience,domain,condition,action) {
 		this.name = name;
 		this.salience = salience;
@@ -331,14 +275,14 @@
 			}
 			crossproducts = cp(values,
 					function(row) {
-						// row contains instance && passes condition test && no crossproducts yet or matches a crossproduct up to the length of the crossproduct
-						if(row.indexOf(instance)>=0 && condition.apply(me,row) && (!crossproducts || crossproducts.some(function(crossProduct) { return crossProduct.every(function(item,i) { return row[i]===item; }) }))) {
-							if(RuleReactor.tracelevel>2) {
-								Console.log("Join: ",me,i,row.length,row);
-							}
-							return true;
-						}
-					});
+				// row contains instance && passes condition test && no crossproducts yet or matches a crossproduct up to the length of the crossproduct
+				if(row.indexOf(instance)>=0 && condition.apply(me,row) && (!crossproducts || crossproducts.some(function(crossProduct) { return crossProduct.every(function(item,i) { return row[i]===item; }) }))) {
+					if(RuleReactor.tracelevel>2) {
+						Console.log("Join: ",me,i,row.length,row);
+					}
+					return true;
+				}
+			});
 			if(crossproducts.length>0) {
 				// cache the crossproducts matching the condition
 				condition.crossproducts = crossproducts;
@@ -401,7 +345,7 @@
 				});
 			});
 		}*/
-		
+
 	}
 	Rule.prototype.reset = function(retest,instance,key) {
 		var me = this, activations, variables = Object.keys(me.bindings);
@@ -579,14 +523,14 @@
 		});
 		// test all associated rules after everything bound
 //		instances.forEach(function(instance) {
-//			if(instance && typeof(instance)==="object" && !RuleReactor.data.has(instance)) {
-//				RuleReactor.data.add(instance);
-//				if(instance.rules) {
-//					Object.keys(instance.rules).forEach(function(rulename) {
-//						instance.rules[rulename].test(instance);
-//					});
-//				}
-//			}
+//		if(instance && typeof(instance)==="object" && !RuleReactor.data.has(instance)) {
+//		RuleReactor.data.add(instance);
+//		if(instance.rules) {
+//		Object.keys(instance.rules).forEach(function(rulename) {
+//		instance.rules[rulename].test(instance);
+//		});
+//		}
+//		}
 //		});
 		if(run) {
 			setTimeout(function() { RuleReactor.run(); });
@@ -684,7 +628,7 @@
 		RuleReactor.tracelevel = level;
 	}
 
-	
+
 
 	if (this.exports) {
 		this.exports  = RuleReactor;
