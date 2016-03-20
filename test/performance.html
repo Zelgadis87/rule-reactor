@@ -13,7 +13,7 @@ function Phase() {
 }
 function Counter() {
 	this.count = 0;
-	this.max = 50;
+	this.max = 80;
 }
 function Pair(odd,even) {
 	this.odd = odd;
@@ -23,14 +23,15 @@ function TestData(id) {
 	this.id = (id ? id : 0);
 }
 
-RuleReactor.createRule("create",0,{c: Counter,d: TestData},
+var create = RuleReactor.createRule("create",0,{c: Counter,d: TestData},
 	function(c, d) {
 		return d.id < c.max;
 	},
-	function(c, d) {
+	function(c) {
 		c.count++;
 		insert(new TestData(c.count));
 	});
+//create.setOptions({optimize:"heap"});
 RuleReactor.createRule("name",0,{pair: Pair, phase: Phase},
 	function(pair,phase) {
 		return !pair.name && phase.name==="name";
@@ -48,17 +49,21 @@ RuleReactor.createRule("pair",0,{d1: TestData, d2: TestData},
 		
 RuleReactor.trace(0);
 var phase = new Phase();
-insert(new Counter(), new TestData(),phase,true);
-console.log("Performance during addition and heavy join");
-console.log("Data Count: ",RuleReactor.data.size);
-console.log("Executions: ",RuleReactor.run.executions);
-console.log("RPS: ",RuleReactor.run.rps);
-console.log("Performance during updates across volumes of data");
-phase.name = "name";
-RuleReactor.run();
-console.log("Data Count: ",RuleReactor.data.size);
-console.log("Executions: ",RuleReactor.run.executions);
-console.log("RPS: ",RuleReactor.run.rps);
+insert(new Counter(), new TestData(),phase);
+RuleReactor.run(Infinity,false,function() {
+	console.log("Performance during addition and heavy join");
+	console.log("Data Count: ",RuleReactor.data.size);
+	console.log("Executions: ",RuleReactor.run.executions);
+	console.log("RPS: ",RuleReactor.run.rps);
+	phase.name = "name";
+	RuleReactor.run(Infinity,false,function() {
+		console.log("Performance during updates across volumes of data");
+		console.log("Data Count: ",RuleReactor.data.size);
+		console.log("Executions: ",RuleReactor.run.executions);
+		console.log("RPS: ",RuleReactor.run.rps);
+	});
+});
+
 
 </script>
 

@@ -10,6 +10,62 @@
 	// in some JS engines in some places even though one would expect it to be allocating memory and we ignore the return value! 
 
 	var RuleReactor = {};
+	
+	function intersection(array) {
+		var arrays = arguments.length;
+		// fast path when we have nothing to intersect
+		if (arrays === 0) {
+			return [];
+		}
+		if (arrays === 1) {
+			return intersection(array,array);
+		}
+		 
+		var arg   = 0, // current arg index
+				bits  = 0, // bits to compare at the end
+				count = 0, // unique item count
+				items = [], // unique items
+				match = [], // item bits
+				seen  = new Map(); // item -> index map
+		 
+		do {
+			var arr = arguments[arg],
+					len = arr.length,
+					bit = 1 << arg, // each array is assigned a bit
+					i   = 0;
+		 
+			if (!len) {
+				return []; // bail out if empty array
+			}
+		 
+			bits |= bit; // add the bit to the collected bits
+			do {
+				var value = arr[i],
+						index = seen.get(value); // find existing item index
+		 
+				if (index === undefined) { // new item
+					count++;
+					index = match.length;
+					seen.set(value, index);
+					items[index] = value;
+					match[index] = bit;
+				} else { // update existing item
+					match[index] |= bit;
+				}
+			} while (++i < len);
+		} while (++arg < arrays);
+		 
+			var result = [],
+			i = 0;
+		 
+		do { // filter out items that don't have the full bitfield
+			if (match[i] === bits) {
+				result[result.length] = items[i];
+			}
+		} while (++i < count);
+		 
+			return result;
+	}
 
 	// better on Firefox
 	function crossproduct1(arrays,rowtest,rowaction) {
@@ -36,7 +92,7 @@
 	}
 
 	// somewhat better on Chrome and far better on Edge
-	function crossproduct3(arrays,rowtest,rowaction) {
+	function crossproduct2(arrays,rowtest,rowaction) {
 		  // Calculate the number of elements needed in the result
 		  var result_elems = 1, row_size = arrays.length;
 		  arrays.map(function(array) {
@@ -53,6 +109,7 @@
 		    for(var i=result_elems-1;i>=0;i--) {
 		    	temp[i] = (temp[i] ? temp[i] : []);
 		    	var pos = i / scale_factor % set_elems;
+		    	// deal with floating point results for indexes, this took a little experimenting
 		    	if(pos < 1 || pos % 1 <= .5) {
 		    		pos = Math.floor(pos);
 		    	} else {
@@ -73,8 +130,18 @@
 		  });
 	  	  return result;
 		}
-	var crossproduct = crossproduct3;
+	var crossproduct = crossproduct2;
 	
+	function getFunctionArgs(f) {
+		var str = f+"";
+		var start = str.indexOf("(")+1;
+		var end = str.indexOf(")");
+		var result = str.substring(start,end).split(",");
+		result.forEach(function(arg,i) {
+			result[i] = arg.trim();
+		})
+		return result;
+	}
 	function compile(rule) {
 		Object.keys(rule.domain).forEach(function(variable) {
 			var cons = rule.domain[variable];
@@ -95,17 +162,31 @@
 			rule.range[variable] = {};
 			rule.bindings[variable] = (rule.bindings[variable] ? rule.bindings[variable] : []);
 			// extract instance keys from condition using a side-effect of replace
-			var condition = rule.condition+"";
-			condition.replace(new RegExp("(\\b"+variable+"\\.\\w+\\b)","g"),
-					function(match) { 
-				var parts = match.split("."),key = parts[1];
-				// cache reactive keys on class prototype
-				cons.prototype.activeKeys[key] = true;
-				// cache what keys are associated with what variables
-				rule.range[variable][key] = (rule.range[variable][key] ? rule.range[variable][key] : true);
-				// don't really do a replacement!
-				return match;
+			rule.conditions.forEach(function(condition) {
+				condition.crossproducts = [];
+				var args = getFunctionArgs(condition);
+				if(args.indexOf(variable)>=0) {
+					condition.range = (condition.range ? condition.range : {})
+					condition.range[variable] = {};
+					(condition+"").replace(new RegExp("(\\b"+variable+"\\.\\w+\\b)","g"),
+						function(match) { 
+							var parts = match.split("."),key = parts[1];
+							// cache reactive keys on class prototype
+							cons.prototype.activeKeys[key] = true;
+							// cache what keys are associated with what variables
+							rule.range[variable][key] = (rule.range[variable][key] ? rule.range[variable][key] : true);
+							condition.range[variable][key] = (condition.range[variable][key] ? condition.range[variable][key] : true);
+							// don't really do a replacement!
+							return match;
+						}
+					);
+				}
 			});
+			var args = getFunctionArgs(rule.action);
+			if(args.indexOf(variable)>=0) {
+				rule.action.domain = (rule.action.domain ? rule.action.domain : {});
+				rule.action.domain[variable] = true;
+			}
 		});
 	}
 
@@ -129,7 +210,7 @@
 			Console.log("Firing: ",this.rule,this.bindings);
 		}
 		this.delete();
-		this.rule.action.apply(this.rule,this.bindings);
+		this.rule.fire(this.bindings);
 	}
 	Activation.prototype.delete = function(instance) {
 		if(!instance || this.bindings.indexOf(instance)>=0) {
@@ -143,40 +224,46 @@
 			}
 		}
 	}
-
+	
 	function Rule(name,salience,domain,condition,action) {
 		this.name = name;
 		this.salience = salience;
 		this.domain = domain;
 		this.range = {};
-		this.condition = condition;
+		this.conditions = (Array.isArray(condition) || condition instanceof Array ? condition : [condition]);
+		this.tests = [];
 		this.action = action;
 		this.bindings = {};
-		this.crossProducts = new Map();
 		this.activations = new Map();
-
+		this.crossProducts = new Map();
+		this.options = {optimize:"stack"};
 		compile(this);
 	} 
 	Rule.prototype.bind = function(instance) {
 		var me = this, variables = Object.keys(me.bindings), values = [];
 		variables.map(function(variable) {
-			if(instance instanceof me.domain[variable]) {
+			if(instance instanceof me.domain[variable] && me.bindings[variable].indexOf(instance)===-1) {
+				if(RuleReactor.tracelevel>2) {
+					Console.log("Binding: ",me,variable,instance);
+				}
 				me.bindings[variable].push(instance);
 			}
 			values.push(me.bindings[variable]);
 		});
-		if(variables.every(function(variable) {
-			return me.bindings[variable] && me.bindings[variable].length>0;
+		/*if(variables.every(function(variable) {
+			return me.bindings[variable].length>0;
 		})) {
 			var crossproducts = crossproduct(values,
 					function(row) { 
-						return row.indexOf(instance)>=0; 
+						if(row.indexOf(instance)>=0) {
+							if(RuleReactor.tracelevel>2) {
+								Console.log("Join: ",me,row.length,row);
+							}
+							return true;
+						}; 
 					},
 					function(row) {
 						row.forEach(function(instance,column) {
-							if(RuleReactor.tracelevel>2) {
-								Console.log("Join: ",me,row);
-							}
 							var variable = variables[column];
 							var crossproducts = me.crossProducts.get(variable);
 							if(!crossproducts) {
@@ -189,40 +276,86 @@
 					}
 			);
 			if(crossproducts) {
+				if(RuleReactor.tracelevel>1) {
+					Console.log("Join Count: ",me,crossproducts.length);
+				}
 				me.test(instance);
 			}
-		}
+		}*/
+		me.test(instance);
 	};
-	Rule.prototype.unbind = function(instance) {
-		var me = this, variables = Object.keys(me.bindings);
-		variables.map(function(variable) {
-			if(instance instanceof me.domain[variable]) {
-				var crossproducts = me.crossProducts.get(variable);
-				if(crossproducts) {
-					for(var i=crossproducts.length-1;i>=0;i--) {
-						if(crossproducts[i].indexOf(instance)>=0) {
-							var activation = me.activations.get(crossproducts[i]);
-							if(RuleReactor.tracelevel>2) {
-								Console.log("Unjoin: ",me,crossproducts[i]);
-							}
-							crossproducts.splice(i,1);
-							if(activation) {
-								activation.delete();
-							}
-						}
-					}
-				}
-			}
+	Rule.prototype.fire = function(bindings) {
+		var me = this, variables = Object.keys(me.domain), args = [];
+		Object.keys(me.action.domain).forEach(function(actionvariable) {
+			args.push(bindings[variables.indexOf(actionvariable)]);
 		});
-		variables.map(function(variable) {
-			var i = me.bindings[variable].indexOf(instance);
-			if(i>=0) {
-				me.bindings[variable].splice(i,1);
-			}
+		me.action.apply(me,args);
+	}
+	Rule.prototype.setOptions = function(options) {
+		var me = this;
+		Object.keys(options).forEach(function(key) {
+			me.options[key] = options[key];
 		});
 	}
 	Rule.prototype.test = function(instance,key) { 
-		var me = this, activations = [], tests = new Map(), variables = Object.keys(me.bindings);
+		var me = this, crossproducts, matches = [instance], cp = crossproduct2;
+		if(me.options.optimize==="heap") {
+			cp = crossproduct1;
+		} else if(me.options.optimize==="stack") {
+			cp = crossproduct2;
+		}
+		if(me.conditions.every(function(condition,i) {
+			var variables = Object.keys(condition.range);
+			// get values for crossproduct specific to condition
+			var values = [];
+			variables.some(function(variable) {
+				if(!key || condition.range[variable][key]) {
+					values.push(me.bindings[variable]);
+				}
+				return values.length===condition.length;
+			});
+			// condition is irrelevant to instance/key combination
+			if(values.length<condition.length) {
+				// but limit matches to those already matching the condition for other reasons
+				if(crossproducts) {
+					crossproducts = condition.crossproducts.filter(function(crossProduct1) { return crossproducts.some(function(crossProduct2) { return crossProduct1.every(function(item,i) { return crossProduct2[i]===item; })}) });
+					return crossproducts.length>0;
+				}
+				return false;
+			}
+			// not all bindings available yet, so fail
+			if(!variables.every(function(variable) {
+				return me.bindings[variable].length>0;
+			})) {
+				return false;
+			}
+			crossproducts = cp(values,
+					function(row) {
+						// row contains instance && passes condition test && no crossproducts yet or matches a crossproduct up to the length of the crossproduct
+						if(row.indexOf(instance)>=0 && condition.apply(me,row) && (!crossproducts || crossproducts.some(function(crossProduct) { return crossProduct.every(function(item,i) { return row[i]===item; }) }))) {
+							if(RuleReactor.tracelevel>2) {
+								Console.log("Join: ",me,i,row.length,row);
+							}
+							return true;
+						}
+					});
+			if(crossproducts.length>0) {
+				// cache the crossproducts matching the condition
+				condition.crossproducts = crossproducts;
+				return true;
+			}
+			return false;
+		})) {
+			if(crossproducts) {
+				crossproducts.forEach(function(crossProduct) {
+					var activation = new Activation(me,crossProduct);
+					RuleReactor.agenda.push(activation);
+					me.activations.set(crossProduct,activation);
+				});
+			}
+			return true;
+		}
+		/*var me = this, activations = [], tests = new Set(), variables = Object.keys(me.bindings);
 		if(!instance || !key || variables.some(function(variable) { return instance instanceof me.domain[variable] && me.range[variable][key]; })) {
 			if(instance) {
 				variables.map(function(variable) {
@@ -240,7 +373,7 @@
 								}
 							});
 							if(crossproductstotest.length>0) {
-								tests.set(variable,crossproductstotest);
+								tests.add(crossproductstotest);
 							}
 						}
 					}
@@ -258,14 +391,17 @@
 			}
 			tests.forEach(function(crossProducts) {
 				crossProducts.forEach(function(crossProduct) {
-					if(me.condition.apply(me,crossProduct)) {
+					if(me.conditions.every(function(condition) {
+						return condition.apply(me,crossProduct);
+					})) {
 						var activation = new Activation(me,crossProduct);
 						RuleReactor.agenda.push(activation);
 						me.activations.set(crossProduct,activation);
 					}
 				});
 			});
-		}
+		}*/
+		
 	}
 	Rule.prototype.reset = function(retest,instance,key) {
 		var me = this, activations, variables = Object.keys(me.bindings);
@@ -301,15 +437,48 @@
 			}
 		}
 	}
+	Rule.prototype.unbind = function(instance) {
+		var me = this, variables = Object.keys(me.bindings);
+		variables.map(function(variable) {
+			if(instance instanceof me.domain[variable]) {
+				var crossproducts = me.crossProducts.get(variable);
+				if(crossproducts) {
+					for(var i=crossproducts.length-1;i>=0;i--) {
+						if(crossproducts[i].indexOf(instance)>=0) {
+							var activation = me.activations.get(crossproducts[i]);
+							if(RuleReactor.tracelevel>2) {
+								Console.log("Unjoin: ",me,crossproducts[i]);
+							}
+							crossproducts.splice(i,1);
+							if(activation) {
+								activation.delete();
+							}
+						}
+					}
+				}
+			}
+		});
+		variables.map(function(variable) {
+			var i = me.bindings[variable].indexOf(instance);
+			if(i>=0) {
+				if(RuleReactor.tracelevel>2) {
+					Console.log("Unbinding: ",me,variable,instance);
+				}
+				me.bindings[variable].splice(i,1);
+			}
+		});
+	}
 
 	RuleReactor.rules = {};
 	RuleReactor.data = new Set();
 	RuleReactor.agenda = [];
-	RuleReactor.trace = function(level) {
-		RuleReactor.tracelevel = level;
+	RuleReactor.createRule = function(name,salience,domain,condition,action) {
+		var rule = new Rule(name,salience,domain,condition,action);
+		RuleReactor.rules[rule.name] = rule;
+		return rule;
 	}
 	RuleReactor.insert = function() {
-		var run = (arguments[arguments.length-1] instanceof Object ? false : arguments[arguments.length-1]), hasimpact = false;
+		var run = (arguments[arguments.length-1] instanceof Object ? false : arguments[arguments.length-1]);
 		// add instance to class.constructor.instances
 		var instances = [].slice.call(arguments);
 		instances.forEach(function(instance) {
@@ -318,6 +487,7 @@
 				if(RuleReactor.tracelevel>2) {
 					Console.log("Insert: ",instance);
 				}
+				RuleReactor.data.add(instance);
 				instance.constructor.instances = (instance.constructor.instances ? instance.constructor.instances : []);
 				instance.constructor.instances.push(instance);
 				// patch any keys on instance or those identified as active while compiling
@@ -344,7 +514,7 @@
 							});
 							// if the value is an object that has possible rule matches, insert it
 							if(value && value.rules) {
-								setTimeout(function() { RuleReactor.insert(value,run); });
+								RuleReactor.insert(value,run);
 							}
 							return rrget.value;
 						}
@@ -408,23 +578,25 @@
 			}
 		});
 		// test all associated rules after everything bound
-		instances.forEach(function(instance) {
-			if(instance && typeof(instance)==="object" && !RuleReactor.data.has(instance)) {
-				RuleReactor.data.add(instance);
-				if(instance.rules) {
-					Object.keys(instance.rules).forEach(function(rulename) {
-						instance.rules[rulename].test(instance);
-					});
-					hasimpact = true;
-				}
-			}
-		});
-		if(run && hasimpact) {
-			RuleReactor.run();
+//		instances.forEach(function(instance) {
+//			if(instance && typeof(instance)==="object" && !RuleReactor.data.has(instance)) {
+//				RuleReactor.data.add(instance);
+//				if(instance.rules) {
+//					Object.keys(instance.rules).forEach(function(rulename) {
+//						instance.rules[rulename].test(instance);
+//					});
+//				}
+//			}
+//		});
+		if(run) {
+			setTimeout(function() { RuleReactor.run(); });
 		}
 	}
+	RuleReactor.not = function(value) {
+		return !value;
+	}
 	RuleReactor.remove = function() {
-		var run = run = (arguments[arguments.length-1] instanceof Object ? false : arguments[arguments.length-1]), hasimpact = false;
+		var run = run = (arguments[arguments.length-1] instanceof Object ? false : arguments[arguments.length-1]);
 		var instances = [].slice.call(arguments);
 		instances.forEach(function(instance) {
 			if(instance && typeof(instance)==="object") {
@@ -465,11 +637,10 @@
 				Object.keys(instance.rules).forEach(function(rulename) {
 					instance.rules[rulename].test(instance);
 				});
-				hasimpact = true;
 			}
 		});
-		if(run && hasimpact) {
-			RuleReactor.run();
+		if(run) {
+			setTimeout(function() { RuleReactor.run(); });
 		}
 	}
 	RuleReactor.reset = function(facts) {
@@ -485,25 +656,34 @@
 			RuleReactor.remove(false);
 		}
 	}
-	RuleReactor.run = function(max) {
+	RuleReactor.run = function(max,loose,callback) {
+		function run(loose) {
+			while (RuleReactor.agenda.length>0 && RuleReactor.run.executions<max) {
+				RuleReactor.run.executions++;
+				RuleReactor.agenda[RuleReactor.agenda.length-1].execute();
+				if(loose) {
+					setTimeout(function() { run(loose); });
+					return;
+				}
+			}
+			RuleReactor.run.stop = new Date();
+			RuleReactor.run.rps = (RuleReactor.run.executions / (RuleReactor.run.stop.getTime() - RuleReactor.run.start.getTime())) * 1000;
+			RuleReactor.run.running = false;
+			if(typeof(callback)==="function") {
+				callback();
+			}
+		}
 		max = (max ? max : Infinity);
+		if(RuleReactor.run.running) { return true; }
+		RuleReactor.run.running = true;
 		RuleReactor.run.executions = 0;
 		RuleReactor.run.start = new Date();
-		while(RuleReactor.agenda.length>0 && RuleReactor.run.executions<max) {
-			RuleReactor.run.executions++;
-			RuleReactor.agenda[RuleReactor.agenda.length-1].execute();
-		}
-		RuleReactor.run.stop = new Date();
-		RuleReactor.run.rps = (RuleReactor.run.executions / (RuleReactor.run.stop.getTime() - RuleReactor.run.start.getTime())) * 1000;
+		run(loose);
 	}
-	RuleReactor.createRule = function(name,salience,domain,condition,action) {
-		var rule = new Rule(name,salience,domain,condition,action);
-		RuleReactor.rules[rule.name] = rule;
-		return rule;
+	RuleReactor.trace = function(level) {
+		RuleReactor.tracelevel = level;
 	}
-	RuleReactor.not = function(value) {
-		return !value;
-	}
+
 	
 
 	if (this.exports) {

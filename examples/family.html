@@ -63,13 +63,14 @@ RuleReactor.insert(joe,bill,mary,false);
 joe.brother = bill;
 joe.parents.push(mary);
 mary.children.push(bill);
-RuleReactor.run();
-RuleReactor.data.forEach(function(instance) {
-	var obj = {};
-	Object.keys(instance).forEach(function(key) {
-		obj[key] = instance[key];
-	});
-	console.log(obj);
+RuleReactor.run(Infinity,true,function() {
+	RuleReactor.data.forEach(function(instance) {
+		var obj = {};
+		Object.keys(instance).forEach(function(key) {
+			obj[key] = instance[key];
+		});
+		console.log(obj);
+	}); 
 });
 </script>
 
