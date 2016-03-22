@@ -59,7 +59,7 @@ RuleReactor.trace(3);
 var mary = new Person("mary");
 var joe = new Person("joe");
 var bill = new Person("bill");
-RuleReactor.insert(joe,bill,mary,false);
+RuleReactor.insert([joe,bill,mary]);
 joe.brother = bill;
 joe.parents.push(mary);
 mary.children.push(bill);

@@ -53,6 +53,9 @@ RuleReactor.createRule("Allergy1",0,{p: Patient},
 	function(p) {
 		return p.fever!=="high" || p.innoculated==true;
 	}],
+	//function(p) {
+	//	return !p.diagnosis  && p.spots==true && (p.fever!=="high" || p.innoculated==true);
+	//},
 	function(p) {
 		p.diagnosis = new Diagnosis("allergy","Allergy diagnosed from presence of spots and no fever or is innoculated for measles.");
 	});
@@ -113,7 +116,9 @@ p.innoculated = false;
 //RuleReactor.insert(p);
 //RuleReactor.remove(p); // adding and removing is just to demonstrate rule activation and deactivation
 RuleReactor.insert(p);
-RuleReactor.run(Infinity,true,function() { console.log(JSON.stringify(p)); });
+RuleReactor.run(Infinity,true,function() { 
+	console.log(JSON.stringify(p)); 
+});
 
 
 

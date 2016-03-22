@@ -1,0 +1,87 @@
+<html>
+<body>
+<p>Open in debugger to see rule activity</p>
+<p>
+Send More Money tests a rule engine's ability to handle large numbers of possible combinations of values (i.e. 10,000,000,000 8 item combinations) to solve a crypto-mathematical problem. 
+Nools takes approximately 10 minutes in Firefox on an Intel i7-4510U 2.00GHz with 8GB RAM and Windows 10 Pro 64. Under the same configuration, RuleReactor will solve the problem in 
+approximately 15 minutes with heap optimization turned on and the rule condition broken into multiple parts. We think this is pretty good for directly coded JavaScript rules that can be 
+handled in the regular debugger and an engine that is only 21K (9K minified) vs 577K (227K minified) for Nools (granted Nools does have some additional features).
+
+Note: In Chrome and Edge, Send More Money takes considerably longer.
+<p>
+
+<script src="../index.js"></script>
+<script id="example">
+
+var not = RuleReactor.not;
+var insert = RuleReactor.insert;
+
+function digit(number) {
+	this.number = number;
+}
+digit.prototype.valueOf = function() { return this.number; };
+
+var send = RuleReactor.createRule("send more money",0,{s: digit,e: digit,n: digit,d: digit,m: digit,o: digit,r: digit,y: digit},
+	[function(s) {
+		return s!=0;
+	},
+	function(s,e) {
+		return e!=s;
+	},
+	function(s,e,n) {
+		return n!=s && n!=e;
+	},
+	function(s,e,n,d) {
+		return d!=s && d!=e && d!=n;
+	},
+	function(s,e,n,d,m) {
+		return m!=s && m!=e && m!=n && m!=d && m!=0;
+	},
+	function(s,e,n,d,m,o) {
+		return o!=s && o!=e && o!=n && o!=d && o!=m;
+	},
+	function(s,e,n,d,m,o,r) {
+		return r!=s && r!=e && r!=n && r!=d && r!=m && r!=o;
+	},
+	function(s,e,n,d,m,o,r,y) {
+		return y!=s && y!=e && y!=n && y!=d && y!=m && y!=o && y!=r
+		&& ((s * 1000 + e * 100 + n * 10 + d + m * 1000 + o * 100 + r * 10 + e) === (m * 10000 + o * 1000 + n * 100 + e * 10 + y));
+	}
+	],
+	function(s,e,n,d,m,o,r,y) {
+		console.log(t, new Date(), s.valueOf(),e.valueOf(),n.valueOf(),d.valueOf()," + ",m.valueOf(),o.valueOf(),r.valueOf(),e.valueOf()," = ",m.valueOf(),o.valueOf(),n.valueOf(),e.valueOf(),y.valueOf());
+	});
+send.setOptions({optimize:"heap"});
+
+RuleReactor.trace(0);
+RuleReactor.insert([new digit(0),new digit(1),new digit(2),new digit(3),new digit(4),new digit(5),new digit(6),new digit(7),new digit(8),new digit(9)],function() { 
+	RuleReactor.run(Infinity,true);
+});
+
+/*
+(defrule send-more-money
+  (digit ?s&:(<> ?s 0))
+  (digit ?e&:(<> ?e ?s))
+  (digit ?n&:(<> ?n ?s ?e))
+  (digit ?d&:(<> ?d ?s ?e ?n))
+  (digit ?m&:(<> ?m ?s ?e ?n ?d 0))
+  (digit ?o&:(<> ?o ?s ?e ?n ?d ?m))
+  (digit ?r&:(<> ?r ?s ?e ?n ?d ?m ?o))
+  (digit ?y&:(<> ?y ?s ?e ?n ?d ?m ?o ?r))
+  (test (= (+ (+ (* ?s 1000) (* ?e 100) (* ?n 10) ?d)
+              (+ (* ?m 1000) (* ?o 100) (* ?r 10) ?e))
+           (+ (* ?m 10000) (* ?o 1000) (* ?n 100) (* ?e 10) ?y)))
+ =>
+  (printout t ?s ?e ?n ?d " + " ?m ?o ?r ?e " = " ?m ?o ?n ?e ?y crlf))
+
+(deffacts digits
+  (digit 0) (digit 1) (digit 2) (digit 3) (digit 4)
+  (digit 5) (digit 6) (digit 7) (digit 8) (digit 9))
+*/
+</script>
+
+<script>
+document.write("<pre>" + document.getElementById("example").textContent + "</pre>"); 
+</script>
+</body>
+</html>
