@@ -2,13 +2,13 @@
 <body>
 <p>Open in debugger to see rule activity</p>
 <p>
-Send More Money tests a rule engine's ability to handle large numbers of possible combinations of values (i.e. 10,000,000,000 8 item combinations) to solve a crypto-mathematical problem. 
+Send More Money tests a rule engine's ability to handle large numbers of possible combinations of values (i.e. 1,814,400 8 item combinations) to solve a crypto-mathematical problem. 
 Nools takes approximately 10 minutes in Firefox on an Intel i7-4510U 2.00GHz with 8GB RAM and Windows 10 Pro 64. Under the same configuration, RuleReactor will solve the problem in 
 approximately 15 minutes with heap optimization turned on and the rule condition broken into multiple parts. We think this is pretty good for directly coded JavaScript rules that can be 
 handled in the regular debugger and an engine that is only 21K (9K minified) vs 577K (227K minified) for Nools (granted Nools does have some additional features).
 
 Note: In Chrome and Edge, Send More Money takes considerably longer.
-<p>
+</p>
 
 <script src="../index.js"></script>
 <script id="example">
@@ -49,7 +49,7 @@ var send = RuleReactor.createRule("send more money",0,{s: digit,e: digit,n: digi
 	}
 	],
 	function(s,e,n,d,m,o,r,y) {
-		console.log(t, new Date(), s.valueOf(),e.valueOf(),n.valueOf(),d.valueOf()," + ",m.valueOf(),o.valueOf(),r.valueOf(),e.valueOf()," = ",m.valueOf(),o.valueOf(),n.valueOf(),e.valueOf(),y.valueOf());
+		console.log(new Date(), s.valueOf(),e.valueOf(),n.valueOf(),d.valueOf()," + ",m.valueOf(),o.valueOf(),r.valueOf(),e.valueOf()," = ",m.valueOf(),o.valueOf(),n.valueOf(),e.valueOf(),y.valueOf());
 	});
 send.setOptions({optimize:"heap"});
 

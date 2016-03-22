@@ -15,7 +15,6 @@
 	// better on Firefox
 	function crossproduct1(arrays,rowtest,rowaction) {
 		var result = [],
-		//indices = Array(arrays.length);
 		indices = {};
 		(function backtracking(index) {
 			if(index === arrays.length) {
@@ -44,6 +43,8 @@
 		for(var a=0;a<arrays.length;a++) {
 			resultelems *= arrays[a].length;
 		};
+		// use a map rather than array for temporary result storage since it will bee sparsely populated
+		// and we only access by index key, no array methods are actually called on it
 		var temp = {}, result = [];
 
 		// Go through each array and add the appropriate element to each element of the temp
@@ -62,6 +63,7 @@
 				}
 				temp[i].push(array[pos]);
 				if(temp[i].length===rowsize) {
+					// move completed rows into result set if they pass test
 					var pass = (rowtest ? rowtest(temp[i]) : true);
 					if(pass) {
 						if(rowaction) {
@@ -70,6 +72,7 @@
 							result.push(temp[i]);
 						}
 					}
+					// allow non-passing row to be garbage collected
 					delete temp[i];
 				}
 			}
@@ -257,9 +260,9 @@
 				// condition is irrelevant to instance/key combination
 				if(values.length<condition.length) {
 					// but limit matches to those already matching the condition for other reasons
-					// switch to using signature
 					if(crossproducts) {
-						crossproducts = condition.crossproducts.filter(function(crossProduct1) { return crossproducts.some(function(crossProduct2) { return crossProduct1row.every(function(item,i) { return item===undefined || crossProduct2[i]===item; }); }); });
+						//crossproducts = condition.crossproducts.filter(function(crossProduct1) { return crossproducts.some(function(crossProduct2) { return crossProduct1.every(function(item,i) { return item===-1 || crossProduct2[i]===item; }); }); });
+						crossproducts = condition.crossproducts.filter(function(crossProduct) { return me.signatures[crossProduct]; });
 						return crossproducts.length>0;
 					}
 					return false;
@@ -269,31 +272,33 @@
 						if(row.indexOf(instance.__rrid__)==-1) {
 							return false;
 						}
-						var fullrow = new Array(domain.length);
+						var fullrow = [];
+						// populate with -1 as "undefined" since a fully populated integer array gets processed faster
+						// create string signatures for look-up in a map to avoid having to loop through large existing crossproducts
+						// ultimately this might be used to share crossproducts across rules??
+						for(var i=0;i<domain.length;i++) {
+							fullrow.push(-1);
+						}
+						// map in the actual values
 						for(var i=0;i<row.length;i++) {
 							fullrow[domain.indexOf(variables[i])] = row[i];
 						}
+						// turn signature into a String object so we can add cache properties
 						// create string signatures for look-up to avoid having to loop through large existing crossproducts
 						// ultimately this might be used to share crossproducts across rules??
-						/*var signature = "", testsignature = "";
-						for(var i=0;i<domain.length;i++) {
-							if(i<row.length-1) {
-								//testsignature += row[i].__rrid__ + ":";
-								testsignature += row[i] + ":";
-							} else {
-								testsignature += "?:";
+						/*var signature = new String(fullrow.join("!"));
+						var testsignature = signature;
+						if(row.length<domain.length) {
+							var testrow = row.slice(0,row.length-1);
+							while(testrow.length<domain.length) {
+								testrow.push(-1);
 							}
-							//signature += (row[i] ? row[i].__rrid__ : "?") + ":";
-							signature += (row[i]!==undefined ? row[i] : "?") + ":";
-						}
-						signature = new String(signature);*/
-						var args = [];
-						row.forEach(function(id) {
-							args.push(RuleReactor.get(id));
-						});
+							testsignature = testrow.join("!");
+						}*/
+						var args = row.map(RuleReactor.get);
 						// row contains instance && passes condition test && no crossproducts yet or matches a crossproduct up to the length of the crossproduct
-						if(row.indexOf(instance.__rrid__)>=0 && condition.apply(me,args) && (!crossproducts || crossproducts.some(function(crossProduct) { return crossProduct.every(function(item,i) { return item===undefined || fullrow[i]===item; }); }))) {
-						//if((!crossproducts || me.signatures[testsignature] || me.signatures[signature]) && condition.apply(me,args)) {
+						if(row.indexOf(instance.__rrid__)>=0 && condition.apply(me,args) && (!crossproducts || crossproducts.some(function(crossProduct) { return crossProduct.every(function(item,i) { return item===-1 || fullrow[i]===item; }); }))) {
+						//if(row.indexOf(instance.__rrid__)>=0 && (!crossproducts || me.signatures[testsignature] || me.signatures[signature]) && condition.apply(me,args)) {
 							if(RuleReactor.tracelevel>2) {
 								Console.log("Join: ",me,i,row.length,args);
 							}
@@ -307,12 +312,16 @@
 							fullrow.row = args;
 							return true;
 						}
-						//me.signatures[signature] = null;
+						//delete me.signatures[signature]; // delete activations thta match?
 					},
 					function (row) {
-						return row.fullrow;
+						// replace row with full row
+						var result = row.fullrow;
+						row.fullrow = null;
 						// replace the row with the signature
-						//return row.signature;
+						//var result = row.signature;
+						//delete row.signature;
+						return result;
 					});
 				if(crossproducts.length>0) {
 					// cache the crossproducts matching the condition
@@ -324,16 +333,13 @@
 				if(crossproducts) {
 					for(var i=0;i<crossproducts.length;i++) {
 						// create activation and restore the crossproduct from a signature
-						var activation = new Activation(me,crossproducts[i].row);
+						var row = crossproducts[i].row;
+						crossproducts[i].row = null;
+						var activation = new Activation(me,row);
 						RuleReactor.agenda.push(activation);
-						me.activations.set(crossproducts[i].row,activation);
+						me.activations.set(row,activation); // use sig as key??
 					}
 					result = true;
-				//if(callback) {
-				//	callback(null,true);
-				//} else {
-				//	return true;
-				//}
 				}
 		}});
 		if(callback) {
@@ -342,21 +348,6 @@
 			return false;
 		}
 	}
-	/*var cbtest = Rule.prototype.test;
-	Rule.prototype.test = function(instance,key,callback) {
-		var me = this;
-		if(callback) {
-			return cbtest.call(me,instance,key,callback);
-		}
-		return new Promise(function(resolve,reject) {
-			cbtest.call(me,instance,key,function(err,result) {
-				if(!err) {
-					resolve(result);
-				}
-				reject(err);
-			})
-		});
-	}*/
 	Rule.prototype.reset = function(retest,instance,key) {
 		var me = this, activations, variables = Object.keys(me.bindings);
 		if((!instance || !key || variables.some(function(variablename) { return instance instanceof me.domain[variablename] && me.range[variablename][key]; }))) {
@@ -447,13 +438,10 @@
 					Console.log("Insert: ",instance);
 				}
 				Object.defineProperty(instance,"__rrid__",{value:RuleReactor.data.length});
-				//RuleReactor.data.set(RuleReactor.data.size+1,instance);
-				//RuleReactor.data.set(instance,instance.__rrid__);
 				RuleReactor.data.push(instance)
 				instance.constructor.instances = (instance.constructor.instances ? instance.constructor.instances : []);
 				instance.constructor.instances.push(instance);
 				// patch any keys on instance or those identified as active while compiling
-
 				var keys = Object.keys(instance);
 				if(instance.activeKeys) {
 					Object.keys(instance.activeKeys).forEach(function(key) {
@@ -541,7 +529,6 @@
 			}
 		});
 		// test all associated rules
-		//var promises = [];
 		instances.forEach(function(instance) {
 			if(instance.rules) {
 				Object.keys(instance.rules).forEach(function(ruleinstance) {
@@ -550,11 +537,9 @@
 				});
 			}
 		});
-		//Promise.all(promises).then(function() {
-			if(callback) {
-				callback(null);
-			}
-		//});
+		if(callback) {
+			callback(null);
+		}
 	}
 	RuleReactor.not = function(value) {
 		return !value;
@@ -650,8 +635,6 @@
 	RuleReactor.trace = function(level) {
 		RuleReactor.tracelevel = level;
 	}
-
-
 
 	if (this.exports) {
 		this.exports  = RuleReactor;

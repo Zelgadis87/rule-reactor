@@ -24,16 +24,22 @@ For code quality assessment purposes, the cyclomatic complexity threshold is set
 
 # Notes
 
+v0.0.9
+
+Firefox will appear to lock up when running Send More Money.
+
+Salience ordering is not working for the agenda in v0.0.9.
+
 v0.0.8 
 
 This release adds the Send More Money test. 
 
-Send More Money tests a rule engine's ability to handle large numbers of possible combinations of values (i.e. 10,000,000,000 8 item combinations) to solve a crypto-mathematical problem. 
+Send More Money tests a rule engine's ability to handle large numbers of possible combinations of values (i.e. 1,814,400 8 item combinations) to solve a crypto-mathematical problem. 
 Nools takes approximately 12 minutes in Firefox on an Intel i7-4510U 2.00GHz with 8GB RAM and Windows 10 Pro 64. Under the same configuration, RuleReactor will solve the problem in 
 approximately 18 minutes with heap optimization turned on and the rule condition broken into multiple parts. We think this is pretty good for directly coded JavaScript rules that can be 
 handled in the regular debugger and an engine that is only 21K (9K minified) vs 577K (227K minified) for Nools (granted Nools does have some additional features).
 
-Note: In Chrome and Edge, Send More Money takes considerably longer.
+Note: In Chrome Send More Money takes considerably longer and in Edge, Send More Money strangely never seems to complete.
 
 There were plans to include Promises in this version. Even using the blazing Bluebird Promise library, the implementation of Promises had a sufficiently
 negative impact that they have not been merged into the public build.
@@ -44,6 +50,8 @@ Salience ordering is not working for the agenda in v0.0.8.
 # Updates (reverse chronological order)
 
 Currently ALPHA
+
+2016-03-22 v0.0.9 Improved rule matching further by packing all arrays with -1 in place of undefined. Ensures JavaScript engine does not convert a sparse array into a map internally. Corrected documentation regarding permutations explored for Send More Money.
 
 2016-03-21 v0.0.8 Added Send More Money example for stress testing joins. Further optimized cross-product to reduce heap use. Optimized call of cross-product
 in rule processing to reduce possible size of cross-product based on the rule being tested. The net performance improvements have been 5x to 10x, depending on the

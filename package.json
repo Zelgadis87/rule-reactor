@@ -1,6 +1,6 @@
 {
   "name": "rule-reactor",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "A light weight, fast, expressive forward chaining business rule engine leveraging JavaScript internals and Functions as objects rather than Rete.",
   "main": "index.js",
   "client": "./browser/rule-reactor.js",
@@ -23,7 +23,9 @@
     "nools",
     "drools",
     "rule based",
-    "rule engine"
+    "rule engine",
+    "PHREAK",
+    "TREAT"
   ],
   "author": "Simon Y. Blackwell <syblackwell@anywhichway.com> (http://www.github.com/anywhichway)",
   "license": "MIT",
