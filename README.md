@@ -129,6 +129,8 @@ This is the last ALPHA release. Watch for a BETA in the next two weeks once all 
 
 Currently ALPHA
 
+2016-03-31 v0.0.13 Argh ... missed the GPL reference in this file, although we got it in the source. Now AGPL.
+
 2016-03-31 v0.0.12 Sorry for the version spam! Attorney said AGPL not GPL.
 
 2016-03-31 v0.0.11 Added documentation. Corrected nools performance statements (it is faster than was stated).
@@ -159,4 +161,4 @@ Typically optimizing the stack increases performance (although it may vary acros
 
 # License
 
-This software is provided as-is under the [GPL 3.0 license](https://opensource.org/licenses/GPL-3.0).
+This software is provided as-is under the [AGPL 3.0 license](https://opensource.org/licenses/AGPL-3.0).
