@@ -16,40 +16,21 @@ Documentation will be available about 2016-03-30. Meanwhile see examples and tes
 
 There is also an intro at: http://anywhichway.github.io/rule-reactor.html
 
+# Performance & Size
+
+Preliminary tests show performance close to that of Nools. However, the rule-reactor core is just 24K (11K minified) vs 577K (227K minified) for Nools. At runtime, rule-reactor will also consume less memory than nools for its pattern and join processing.
+
 # Building & Testing
 
-Building & testing is conducted using Travis, Mocha, Chai, and Istanbul.
+Building, testing and quality assessment are conducted using Travis, Mocha, Chai, Istanbul, Code Climate, and Codacity.
 
 For code quality assessment purposes, the cyclomatic complexity threshold is set to 10.
-
-# Notes
-
-v0.0.9
-
-Firefox will appear to lock up when running Send More Money.
-
-Salience ordering is not working for the agenda in v0.0.9.
-
-v0.0.8 
-
-This release adds the Send More Money test. 
-
-Send More Money tests a rule engine's ability to handle large numbers of possible combinations of values (i.e. 1,814,400 8 item combinations) to solve a crypto-mathematical problem. 
-Nools takes approximately 12 minutes in Firefox on an Intel i7-4510U 2.00GHz with 8GB RAM and Windows 10 Pro 64. Under the same configuration, RuleReactor will solve the problem in 
-approximately 18 minutes with heap optimization turned on and the rule condition broken into multiple parts. We think this is pretty good for directly coded JavaScript rules that can be 
-handled in the regular debugger and an engine that is only 21K (9K minified) vs 577K (227K minified) for Nools (granted Nools does have some additional features).
-
-Note: In Chrome Send More Money takes considerably longer and in Edge, Send More Money strangely never seems to complete.
-
-There were plans to include Promises in this version. Even using the blazing Bluebird Promise library, the implementation of Promises had a sufficiently
-negative impact that they have not been merged into the public build.
-
-Salience ordering is not working for the agenda in v0.0.8.
-
 
 # Updates (reverse chronological order)
 
 Currently ALPHA
+
+2016-03-31 v0.0.10 Salience ordering is now working. Re-worked the cross-product and matching for a 10x performance increase in Firefox and Chrome. Send More Money can now be solved in 2 minutes vs approximately 10 minutes for nools. License changed to GPL 3.0.
 
 2016-03-22 v0.0.9 Improved rule matching further by packing all arrays with -1 in place of undefined. Ensures JavaScript engine does not convert a sparse array into a map internally. Corrected documentation regarding permutations explored for Send More Money.
 
@@ -75,4 +56,4 @@ Typically optimizing the stack increases performance (although it may vary acros
 
 # License
 
-This software is provided as-is under the [MIT license](http://opensource.org/licenses/MIT).
+This software is provided as-is under the [GPL 3.0 license](https://opensource.org/licenses/GPL-3.0).

@@ -1,85 +1,203 @@
-//rule-reactor
+/* The GPL 3.0 License
 
-//Copyright (c) 2016 Simon Y. Blackwell, AnyWhichWay
-//MIT License - http://opensource.org/licenses/mit-license.php
+rule-reactor: A light weight, fast, expressive forward chaining business rule engine leveraging JavaScript internals and Functions as objects rather than Rete.
+
+Copyright (c) 2016 Simon Y. Blackwell
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 
 (function() {
 	"use strict";
 
-	// Throughout this code there are place map is used where forEach would be expected. This is because map is considerably faster
-	// in some JS engines in some places even though one would expect it to be allocating memory and we ignore the return value! 
-
 	var RuleReactor = {};
 
-	// better on Firefox
-	function crossproduct1(arrays,rowtest,rowaction) {
-		var result = [],
-		indices = {};
-		(function backtracking(index) {
-			if(index === arrays.length) {
-				var row = arrays.map(function(array,index) {
-					return array[indices[index]];
-				});
-				if(!rowtest) {
-					return result.push((rowaction ? rowaction(row) : row));
-				} else if(rowtest(row)) {
-					return result.push((rowaction ? rowaction(row) : row));
-				}
-				return result.length;
-			}
-			for(var i=0; i<arrays[index].length; ++i) {
-				indices[index] = i;
-				backtracking(index+1);
-			}
-		})(0);
-		return result;
-	}
-
-	// somewhat better on Chrome and far better on Edge
-	function crossproduct2(arrays,rowtest,rowaction) {
-		// Calculate the number of elements needed in the result
-		var resultelems = 1, rowsize = arrays.length;
-		for(var a=0;a<arrays.length;a++) {
-			resultelems *= arrays[a].length;
-		};
-		// use a map rather than array for temporary result storage since it will bee sparsely populated
-		// and we only access by index key, no array methods are actually called on it
-		var temp = {}, result = [];
-
-		// Go through each array and add the appropriate element to each element of the temp
-		var scalefactor = resultelems;
-		for(var a=0;a<arrays.length;a++) {
-			var array  = arrays[a];
-			scalefactor /= array.length;
-			for(var i=0;i<resultelems;i++) {
-				temp[i] = (temp[i] ? temp[i] : []);
-				var pos = i / scalefactor % array.length;
-				// deal with floating point results for indexes, this took a little experimenting
-				if(pos < 1 || pos % 1 <= .5) {
-					pos = Math.floor(pos);
-				} else {
-					pos = Math.min(array.length-1,Math.ceil(pos));
-				}
-				temp[i].push(array[pos]);
-				if(temp[i].length===rowsize) {
-					// move completed rows into result set if they pass test
-					var pass = (rowtest ? rowtest(temp[i]) : true);
-					if(pass) {
-						if(rowaction) {
-							result.push(rowaction(temp[i]));
-						} else {
-							result.push(temp[i]);
-						}
-					}
-					// allow non-passing row to be garbage collected
-					delete temp[i];
-				}
-			}
+	function intersection(array) {
+		var arrays = arguments.length;
+		// fast path when we have nothing to intersect
+		if (arrays === 0) {
+			return [];
 		}
-		return result;
+		if (arrays === 1) {
+			return intersection(array,array);
+		}
+		 
+		var arg   = 0, // current arg index
+				bits  = 0, // bits to compare at the end
+				count = 0, // unique item count
+				items = [], // unique items
+				match = [], // item bits
+				seen  = new Map(); // item -> index map
+		 
+		do {
+			var arr = arguments[arg],
+					len = arr.length,
+					bit = 1 << arg, // each array is assigned a bit
+					i   = 0;
+		 
+			if (!len) {
+				return []; // bail out if empty array
+			}
+		 
+			bits |= bit; // add the bit to the collected bits
+			do {
+				var value = arr[i],
+						index = seen.get(value); // find existing item index
+		 
+				if (index === undefined) { // new item
+					count++;
+					index = match.length;
+					seen.set(value, index);
+					items[index] = (value ? value.valueOf() : value)
+				} else { // update existing item
+					match[index] |= bit;
+				}
+			} while (++i < len);
+		} while (++arg < arrays);
+		 
+			var result = [],
+			i = 0;
+		 
+		do { // filter out items that don't have the full bitfield
+			if (match[i] === bits) {
+				result[result.length] = items[i];
+			}
+		} while (++i < count);
+		 
+			return result;
 	}
-	var crossproduct = crossproduct2;
-
+	
+//	portions from http://phrogz.net/lazy-cartesian-product
+	function CXProduct(collections){
+		this.collections = (collections ? collections : []);
+		Object.defineProperty(this,"length",{set:function() {},get:function() { var size = 1; this.collections.forEach(function(collection) { size *= collection.length; }); return size; }});
+		Object.defineProperty(this,"size",{set:function() {},get:function() { return this.length; }});
+	}
+	CXProduct.prototype.add = function(collections) {
+		var me = this;
+		collections.forEach(function(collection) {
+			me.collections.push(collection);
+		});
+		return me;
+	}
+	CXProduct.prototype.push = function(collectionIndex,element) {
+		this.collections[collectionIndex].push(element);
+		return this;
+	}
+	function get(n,collections,dm,c) {
+		for (var i=collections.length;i--;)c[i]=collections[i][(n/dm[i][0]<<0)%dm[i][1]];
+	}
+	CXProduct.prototype.get = function(n,pattern){
+		var me = this, c = [], size = 1;
+		for (var dm=[],f=1,l,i=me.collections.length;i--;f*=l){ dm[i]=[f,l=me.collections[i].length]; size*=me.collections[i].length; }
+		if(n>=size) {
+			return undefined;
+		}
+		get(n,me.collections,dm,c);
+		if(!pattern || pattern.every(function(value,i) {
+			return value===undefined || (typeof(value)==="function" ? value.call(c,c[i],i) : false) || c[i]===value;
+		})) {
+			return c.slice(0);
+		}
+	}
+	CXProduct.prototype.indexOf = function(row) {
+		var me = this, index = 0;
+		for (var dm=[],f=1,l,i=me.collections.length;i--;f*=l){ dm[i]=f,l=me.collections[i].length; }
+		if(me.collections.every(function(collection,i) {
+			var pos = collection.indexOf(row[i]);
+			if(pos>=0) {
+				index += (pos * dm[i]);
+				return true;
+			}
+			return false;
+		})) {
+			return index;
+		}
+		return -1;
+	}
+	CXProduct.prototype.intersection = function(cxproduct) {
+		var me = this, collections = [];
+		if(me.collections.length!==cxproduct.collections.length) {
+			return new CXProduct([]);
+		}
+		me.collections.forEach(function(collection,i) {
+			collections.push(intersection(collection,cxproduct.collections[i]));
+		});
+		return new CXProduct(collections);
+	}
+	CXProduct.prototype.verify = function(i,row) {
+		var me = this;
+		var match = me.get(i);
+		return match && match.every(function(element,i) { return element===row[i]; });
+	}
+	function dive(d,counter,collections,lens,p,callback,pattern,test){
+		var a=collections[d], max=collections.length-1,len=lens[d];
+		if (d==max) {
+			for (var i=0;i<len;++i) { 
+				p[d]=a[i]; 
+				if(!test || test(p)) {
+					callback(p.slice(0),counter.count); 
+				}
+				counter.count++;
+			}
+		} else {
+			for (var i=0;i<len;++i) p[d]=a[i], dive(d+1,counter,collections,lens,p,callback,pattern,test);
+		}
+		p.pop();
+	}
+	CXProduct.prototype.forEach1 = function(callback,pattern,test) {
+		var me = this, p=[],lens=[], counter={count:0};
+		for (var i=me.collections.length;i--;) { lens[i]=me.collections[i].length; }
+		dive(0,counter,me.collections,lens,p,callback,pattern,test);
+	}
+	/*CXProduct.prototype.forEach2 = function(callback,pattern,tests) {
+		var me = this, i = 0;
+		while(i<me.length) {
+			var value = me.get(i);
+			var params = {tomatch:value,pattern:pattern,index:i,tests:(tests ? tests.map(function(test) { return test+""; }) : []),required:(tests ? tests.map(function(test) { return test.required; }) : undefined)};
+			hamsters.run(params,function() {
+				var tomatch = params.tomatch,
+					pattern = (params.pattern ? params.pattern : []),
+					index = params.index,
+					tests = params.tests,
+					required = params.required;
+				function runtest(fstr,required,tomatch) {
+					var test = Function("return " + fstr)(),
+						args = new Array();
+					if(required) {
+						return test.apply(null,required.map(function(index) { return tomatch[index]; }));
+					} else {
+						return test.apply(null,tomatch);
+					}
+					
+				}
+				if(pattern.every(function(element,i) {
+					return element==null || element===tomatch[i];
+				}) && tests.every(function(test,i) { return runtest(test,(required ? required[i] : undefined),tomatch); })) {
+					rtn.data.push(tomatch,index);
+				}
+			},function(output) {
+				if(output[0].length>0) {
+					callback(output[0][0],output[0][1]);
+				}
+			},1,false);
+			i++;
+		}
+	}*/
+	CXProduct.prototype.forEach = CXProduct.prototype.forEach1;
+	
 	function getFunctionArgs(f) {
 		var str = f+"";
 		var start = str.indexOf("(")+1;
@@ -91,7 +209,14 @@
 		return result;
 	}
 	function compile(rule) {
-		Object.keys(rule.domain).forEach(function(variable) {
+		var variables = Object.keys(rule.domain), domains = {};
+		variables.forEach(function(variable) {
+			if(!domains[variable]) {
+				domains[variable]=0;
+			}
+			domains[variable]++;
+		});
+		variables.forEach(function(variable) {
 			var cons = rule.domain[variable];
 			cons.prototype.rules = (cons.prototype.rules ? cons.prototype.rules : {});
 			cons.prototype.rules[rule.name] = rule;
@@ -111,13 +236,17 @@
 			rule.bindings[variable] = (rule.bindings[variable] ? rule.bindings[variable] : []);
 			// extract instance keys from condition using a side-effect of replace
 			rule.conditions.forEach(function(condition) {
-				condition.crossproducts = [];
-				var args = getFunctionArgs(condition);
-				if(args.indexOf(variable)>=0) {
-					condition.range = (condition.range ? condition.range : {})
-					condition.range[variable] = {};
-					(condition+"").replace(new RegExp("(\\b"+variable+"\\.\\w+\\b)","g"),
-							function(match) { 
+				if(!condition.required) {
+					var args = getFunctionArgs(condition);
+					condition.required = new Array(args.length);
+					args.forEach(function(arg,i) {
+						condition.required[i] = variables.indexOf(arg);
+					});
+				}
+				condition.range = (condition.range ? condition.range : {})
+				condition.range[variable] = {};
+				(condition+"").replace(new RegExp("(\\b"+variable+"\\.\\w+\\b)","g"),
+					function(match) { 
 						var parts = match.split("."),key = parts[1];
 						// cache reactive keys on class prototype
 						cons.prototype.activeKeys[key] = true;
@@ -127,14 +256,27 @@
 						// don't really do a replacement!
 						return match;
 					}
-					);
-				}
+				);
 			});
 			var args = getFunctionArgs(rule.action);
 			if(args.indexOf(variable)>=0) {
 				rule.action.domain = (rule.action.domain ? rule.action.domain : {});
 				rule.action.domain[variable] = true;
 			}
+		});
+		rule.compiledConditions = [];
+		rule.conditions.forEach(function(condition,i) {
+			rule.compiledConditions.push(function(match) {
+				var me = this, args = [];
+				if(condition.required.every(function(i) {
+					if(match[i]!==undefined) {
+						return args.push(match[i]);
+					}
+				})) {
+					return condition.apply(me,args);
+				}
+				return true;
+			});
 		});
 	}
 
@@ -146,27 +288,57 @@
 	// uncomment line below to remove logging
 	//Console.log = function() {};
 
-	function Activation(rule,bindings) {
-		this.rule = rule;
-		this.bindings = bindings;
+	function Activation(rule,match,index,bindings,instance) {
+		var me = this;
+		me.rule = rule;
+		me.match = match;
+		me.index = index;
+		me.bindings = bindings;
+		me.instance = instance;
+		if(!RuleReactor.agenda.some(function(activation,i) {
+			if(activation.rule.salience<=me.rule.salience) {
+				RuleReactor.agenda.splice(i,0,me);
+				return true;
+			}
+		})) {
+			RuleReactor.agenda.push(me);
+		}
+		var activations = rule.activations.get(instance);
+		if(!activations) {
+			activations = [];
+			rule.activations.set(instance,[]);
+		}
+		activations.push(me);
 		if(RuleReactor.tracelevel>1) {
-			Console.log("Activating: ",this.rule,this.bindings);
+			Console.log("Activating: ",rule,match);
 		}
 	}
 	Activation.prototype.execute = function() {
-		if(RuleReactor.tracelevel>0) {
-			Console.log("Firing: ",this.rule,this.bindings);
+		var me = this;
+		if(me.bindings.verify(me.index,me.match) && me.rule.compiledConditions.every(function(condition) {
+			return condition.call(me,me.match);
+		})) {
+			if(RuleReactor.tracelevel>0) {
+				Console.log("Firing: ",this.rule,this.match);
+			}
+			me.rule.fire(me.match);
 		}
-		this.delete();
-		this.rule.fire(this.bindings);
+		me.delete();
 	}
 	Activation.prototype.delete = function(instance) {
-		if(!instance || this.bindings.indexOf(instance)>=0) {
+		var me = this;
+		if(!instance || me.match.indexOf(instance)>=0) {
 			if(RuleReactor.tracelevel>1) {
-				Console.log("Deactivating: ",this.rule,this.bindings);
+				Console.log("Deactivating: ",me.rule,me.match);
 			}
-			this.rule.activations.delete(this);
-			var i = RuleReactor.agenda.indexOf(this);
+			var activations = me.rule.activations.get(me.instance);
+			if(activations) {
+				var i = activations.indexOf(me);
+				if(i>=0) {
+					activations.splice(i,1);
+				}
+			}
+			var i = RuleReactor.agenda.indexOf(me);
 			if(i>=0) {
 				RuleReactor.agenda.splice(i,1);
 			}
@@ -179,12 +351,11 @@
 		this.domain = domain;
 		this.range = {};
 		this.conditions = (Array.isArray(condition) || condition instanceof Array ? condition : [condition]);
-		this.tests = [];
+		this.pattern = new Array(Object.keys(domain).length);
 		this.action = action;
 		this.bindings = {};
 		this.activations = new Map();
-		this.signatures = {};
-		this.options = {optimize:"stack"}
+		this.options = {optimize:"stack"};
 		compile(this);
 		if(RuleReactor.tracelevel>2) {
 			Console.log("New Rule: ",this);
@@ -197,18 +368,25 @@
 				if(RuleReactor.tracelevel>2) {
 					Console.log("Binding: ",me,variable,instance);
 				}
-				me.bindings[variable].push(instance.__rrid__);
+				me.bindings[variable].push(instance);
 			}
-			values.push(me.bindings[variable]);
 		});
-		if(test) {
-			me.test(instance);
+		if(variables.every(function(variable,i) {
+			values.push(me.bindings[variable]);
+			return me.bindings[variable].length>0;
+		})) {
+			if(!me.cxproduct) {
+				me.cxproduct = new CXProduct().add(values);
+			}
+			if(test) {
+				me.test(instance);
+			}
 		}
 	};
-	Rule.prototype.fire = function(bindings) {
+	Rule.prototype.fire = function(match) {
 		var me = this, variables = Object.keys(me.domain), args = [];
 		Object.keys(me.action.domain).forEach(function(actionvariable) {
-			args.push(bindings[variables.indexOf(actionvariable)]);
+			args.push(match[variables.indexOf(actionvariable)]);
 		});
 		me.action.apply(me,args);
 	}
@@ -219,189 +397,69 @@
 		});
 	}
 	Rule.prototype.test = function(instance,key,callback) { 
-		var me = this, domain = Object.keys(me.domain), crossproducts, cp = crossproduct, result = false;
-		if(me.options.optimize==="heap") {
-			cp = crossproduct1;
-		} else if(me.options.optimize==="stack") {
-			cp = crossproduct2;
+		var me = this, variables = Object.keys(me.domain), result = false, values = [];
+		if(!variables.every(function(variable) {
+			values.push(me.bindings[variable]);
+			return me.bindings[variable].length>0;
+		})) {
+			return result;
 		}
 		if(RuleReactor.tracelevel>2) {
 			Console.log("Testing: ",me,instance,key);
 		}
-		// get relevant variables for instance
-		var instancevariables = [];
-		domain.forEach(function(variable) {
-			if(instance instanceof me.domain[variable]) {
-				instancevariables.push(variable);
-			}
-		});
-		instancevariables.forEach(function(instancevariable) {
-			if(me.conditions.every(function(condition,i) {
-				var variables = Object.keys(condition.range);
-				// not all bindings available yet, so fail
-				if(!variables.every(function(variable) {
-					return me.bindings[variable].length>0;
-				})) {
-					return false;
+		
+		var test = function(match) {
+			return me.compiledConditions.every(function(condition) {
+				return condition.call(me,match);
+			});
+		}
+		if(instance) {
+			variables.forEach(function(variable,i) {
+				var collections = me.cxproduct.collections.slice(0);
+				if(instance instanceof me.domain[variable]) {
+					collections[i] = [instance];
+					var cxproduct = new CXProduct(collections);
+					cxproduct.forEach(function(match,i) {
+						new Activation(me,match,i,cxproduct);
+						result = true;
+					},undefined,test); //me.conditions);
 				}
-				// get values for crossproduct specific to condition
-				var values = [];
-				variables.some(function(variable) {
-					if(!key || condition.range[variable][key]) {
-						if(variable===instancevariable) {
-							values.push([instance.__rrid__]);
-						} else {
-							values.push(me.bindings[variable]);
-						}
-					}
-					return values.length===condition.length;
-				});
-				// condition is irrelevant to instance/key combination
-				if(values.length<condition.length) {
-					// but limit matches to those already matching the condition for other reasons
-					if(crossproducts) {
-						//crossproducts = condition.crossproducts.filter(function(crossProduct1) { return crossproducts.some(function(crossProduct2) { return crossProduct1.every(function(item,i) { return item===-1 || crossProduct2[i]===item; }); }); });
-						crossproducts = condition.crossproducts.filter(function(crossProduct) { return me.signatures[crossProduct]; });
-						return crossproducts.length>0;
-					}
-					return false;
-				}
-				crossproducts = cp(values,
-					function (row) {
-						if(row.indexOf(instance.__rrid__)==-1) {
-							return false;
-						}
-						var fullrow = [];
-						// populate with -1 as "undefined" since a fully populated integer array gets processed faster
-						// create string signatures for look-up in a map to avoid having to loop through large existing crossproducts
-						// ultimately this might be used to share crossproducts across rules??
-						for(var i=0;i<domain.length;i++) {
-							fullrow.push(-1);
-						}
-						// map in the actual values
-						for(var i=0;i<row.length;i++) {
-							fullrow[domain.indexOf(variables[i])] = row[i];
-						}
-						// turn signature into a String object so we can add cache properties
-						// create string signatures for look-up to avoid having to loop through large existing crossproducts
-						// ultimately this might be used to share crossproducts across rules??
-						/*var signature = new String(fullrow.join("!"));
-						var testsignature = signature;
-						if(row.length<domain.length) {
-							var testrow = row.slice(0,row.length-1);
-							while(testrow.length<domain.length) {
-								testrow.push(-1);
-							}
-							testsignature = testrow.join("!");
-						}*/
-						var args = row.map(RuleReactor.get);
-						// row contains instance && passes condition test && no crossproducts yet or matches a crossproduct up to the length of the crossproduct
-						if(row.indexOf(instance.__rrid__)>=0 && condition.apply(me,args) && (!crossproducts || crossproducts.some(function(crossProduct) { return crossProduct.every(function(item,i) { return item===-1 || fullrow[i]===item; }); }))) {
-						//if(row.indexOf(instance.__rrid__)>=0 && (!crossproducts || me.signatures[testsignature] || me.signatures[signature]) && condition.apply(me,args)) {
-							if(RuleReactor.tracelevel>2) {
-								Console.log("Join: ",me,i,row.length,args);
-							}
-							// have signature point to row
-							//me.signatures[signature] = row;
-							// save signature on row so we don't have to re-compute
-							//row.signature = signature;
-							// save the row on the signature so we don't have to lookup
-							//signature.row = args;
-							row.fullrow = fullrow;
-							fullrow.row = args;
-							return true;
-						}
-						//delete me.signatures[signature]; // delete activations thta match?
-					},
-					function (row) {
-						// replace row with full row
-						var result = row.fullrow;
-						row.fullrow = null;
-						// replace the row with the signature
-						//var result = row.signature;
-						//delete row.signature;
-						return result;
-					});
-				if(crossproducts.length>0) {
-					// cache the crossproducts matching the condition
-					condition.crossproducts = crossproducts;
-					return true;
-				}
-				return false;
-			})) {
-				if(crossproducts) {
-					for(var i=0;i<crossproducts.length;i++) {
-						// create activation and restore the crossproduct from a signature
-						var row = crossproducts[i].row;
-						crossproducts[i].row = null;
-						var activation = new Activation(me,row);
-						RuleReactor.agenda.push(activation);
-						me.activations.set(row,activation); // use sig as key??
-					}
-					result = true;
-				}
-		}});
+			});
+		} else {
+			me.cxproduct.forEach(function(match,i) {
+				new Activation(me,match,i,me.cxproduct);
+				result = true;
+			},undefined,test); //me.conditions);
+		}
 		if(callback) {
 			callback(null,result);
 		} else {
-			return false;
+			return result;
 		}
 	}
-	Rule.prototype.reset = function(retest,instance,key) {
-		var me = this, activations, variables = Object.keys(me.bindings);
-		if((!instance || !key || variables.some(function(variablename) { return instance instanceof me.domain[variablename] && me.range[variablename][key]; }))) {
-			if(instance) {
-				variables.map(function(variable) {
-					if(instance instanceof me.domain[variable]) {
-						var crossproducts = me.crossProducts.get(variable);
-						if(crossproducts) {
-							crossproducts.forEach(function(crossProduct) {
-								if(crossProduct.indexOf(instance)>=0) {
-									var activation = me.activations.get(crossProduct);
-									if(activation) {
-										activation.delete();
-									}
-								}
-							});
-						}
-					}
-				});
-			} else {
-				me.crossProducts.forEach(function(crossProducts) {
-					crossProducts.forEach(function(crossProduct) {
-						activations = me.activations.get(crossProduct);
-						if(activations) {
-							activations.forEach(function(activation) { activation.delete(); });
-						}
-					});
-				});
-			}
-			if(retest) {
-				me.test(instance);
-			}
+	Rule.prototype.reset = function(retest,instance) {
+		var me = this;
+		if(RuleReactor.tracelevel>2) {
+			Console.log("Reseting: ",me,instance);
 		}
-	}
-	Rule.prototype.unbind = function(instance) {
-		var me = this, variables = Object.keys(me.bindings);
-		variables.map(function(variable) {
-			if(instance instanceof me.domain[variable]) {
-				var crossproducts = me.crossProducts.get(variable);
-				if(crossproducts) {
-					for(var i=crossproducts.length-1;i>=0;i--) {
-						if(crossproducts[i].indexOf(instance)>=0) {
-							var activation = me.activations.get(crossproducts[i]);
-							if(RuleReactor.tracelevel>2) {
-								Console.log("Unjoin: ",me,crossproducts[i]);
-							}
-							crossproducts.splice(i,1);
-							if(activation) {
-								activation.delete();
-							}
-						}
+		me.activations.forEach(function(activations,activator) {
+			if(!instance || activator===instance) {
+				activations.forEach(function(activation) {
+					var i = RuleReactor.agenda.indexOf(activation);
+					if(i>=0) {
+						RuleReactor.agenda.splice(i,1);
 					}
-				}
+				});
+				
 			}
 		});
+		if(retest) {
+			me.test(instance);
+		}
+	}
+	
+	Rule.prototype.unbind = function(instance) {
+		var me = this, variables = Object.keys(me.bindings);
 		variables.map(function(variable) {
 			var i = me.bindings[variable].indexOf(instance);
 			if(i>=0) {
@@ -409,6 +467,12 @@
 					Console.log("Unbinding: ",me,variable,instance);
 				}
 				me.bindings[variable].splice(i,1);
+				if(me.bindings[variable].length===0) {
+					me.cxproduct = null;
+					me.reset(false);
+				} else {
+					me.reset(false,instance);
+				}
 			}
 		});
 	}
@@ -430,6 +494,7 @@
 	RuleReactor.insert = function(instances,callback) {
 		// add instance to class.constructor.instances
 		instances = (Array.isArray(instances) || instances instanceof Array ? instances : [instances]);
+		var instancestoprocess = [];
 		instances.forEach(function(instance) {
 			// don't bother processing instances that don't impact rules or are already in the data store
 			if(instance && typeof(instance)==="object" && instance.__rrid__===undefined) { // !RuleReactor.data.has(instance)
@@ -437,7 +502,9 @@
 					Console.log("Insert: ",instance);
 				}
 				Object.defineProperty(instance,"__rrid__",{value:RuleReactor.data.length});
-				RuleReactor.data.push(instance)
+				RuleReactor.data.push(instance);
+				instancestoprocess.push(instance);
+				// need to change instances to JOQULAR like index
 				instance.constructor.instances = (instance.constructor.instances ? instance.constructor.instances : []);
 				instance.constructor.instances.push(instance);
 				// patch any keys on instance or those identified as active while compiling
@@ -455,16 +522,30 @@
 					}
 					function rrset(value) {
 						if(rrget.value!==value) {
+							if(RuleReactor.tracelevel>2) {
+								Console.log("Modify: ",instance,key,rrget.value,"=>",value);
+							}
 							// set new value
 							rrget.value = value;
-							// re-test the rules that pattern match the key
-							Object.keys(instance.rules).forEach(function(rulename) {
-								instance.rules[rulename].test(instance,key);
-							});
 							// if the value is an object that has possible rule matches, insert it
 							if(value && value.rules) {
 								RuleReactor.insert(value);
 							}
+							// re-test the rules that pattern match the key
+							Object.keys(instance.rules).forEach(function(rulename) {
+								var rule = instance.rules[rulename];
+								if(Object.keys(rule.range).some(function(variable) {
+									return rule.range[variable][key] && instance instanceof rule.domain[variable];
+								})) {
+									var activations = rule.activations.get(instance);
+									if(activations) {
+										activations.forEach(function(activation) {
+											activation.delete();
+										});
+									}
+									rule.test(instance,key);
+								}
+							});
 							return rrget.value;
 						}
 					}
@@ -494,7 +575,18 @@
 										f.apply(value,arguments);
 										// re-test the rules that pattern match the key
 										Object.keys(instance.rules).forEach(function(rulename) {
-											instance.rules[rulename].test(instance,key);
+											var rule = instance.rules[rulename];
+											if(Object.keys(rule.range).some(function(variable) {
+												return rule.range[variable][key] && instance instanceof rule.domain[variable];
+											})) {
+												var activations = rule.activations.get(instance);
+												if(activations) {
+													activations.forEach(function(activation) {
+														activation.delete();
+													});
+												}
+												rule.test(instance,key);
+											}
 										});
 									}
 									Object.defineProperty(rrget.value,fname,{configurable:true,writable:true,value:newf});
@@ -520,7 +612,7 @@
 				});
 			}
 		});
-		instances.forEach(function(instance) {
+		instancestoprocess.forEach(function(instance) {
 			if(instance.rules) {
 				Object.keys(instance.rules).forEach(function(ruleinstance) {
 					instance.rules[ruleinstance].bind(instance);
@@ -528,13 +620,17 @@
 			}
 		});
 		// test all associated rules
-		instances.forEach(function(instance) {
+		var rulestotest = {};
+		instancestoprocess.forEach(function(instance) {
 			if(instance.rules) {
-				Object.keys(instance.rules).forEach(function(ruleinstance) {
+				Object.keys(instance.rules).forEach(function(rulename) {
 					//promises.push(instance.rules[ruleinstance].test(instance));
-					instance.rules[ruleinstance].test(instance);
+					rulestotest[rulename] = instance.rules[rulename];
 				});
 			}
+		});
+		Object.keys(rulestotest).forEach(function(rulename) {
+			rulestotest[rulename].test();
 		});
 		if(callback) {
 			callback(null);
@@ -579,14 +675,6 @@
 
 			}
 		});
-		// re-test all associated rules after everything unbound, should we ??
-		instances.forEach(function(instance) {
-			if(instance && typeof(instance)==="object" && instance.rules) {
-				Object.keys(instance.rules).forEach(function(rulename) {
-					instance.rules[rulename].test(instance);
-				});
-			}
-		});
 		if(run) {
 			setTimeout(function() { RuleReactor.run(); });
 		}
@@ -601,12 +689,12 @@
 				data.push(instance);
 			});
 			data.push(false);
-			RuleReactor.remove(false);
+			RuleReactor.remove(data,false);
 		}
 	}
 	RuleReactor.run = function(max,loose,callback) {
 		function run(loose) {
-			while (RuleReactor.agenda.length>0 && RuleReactor.run.executions<max) {
+			while (RuleReactor.agenda.length>0 && RuleReactor.run.executions<RuleReactor.run.max) {
 				RuleReactor.run.executions++;
 				RuleReactor.agenda[RuleReactor.agenda.length-1].execute();
 				if(loose) {
@@ -621,8 +709,8 @@
 				callback();
 			}
 		}
-		max = (max ? max : Infinity);
 		if(RuleReactor.run.running) { return true; }
+		RuleReactor.run.max = (max ? max : Infinity);
 		RuleReactor.run.running = true;
 		RuleReactor.run.executions = 0;
 		RuleReactor.run.start = new Date();
@@ -644,3 +732,4 @@
 		this.RuleReactor = RuleReactor;
 	}
 }).call((typeof(window)!=="undefined" ? window : (typeof(module)!=="undefined" ? module : null)));
+

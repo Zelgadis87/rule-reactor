@@ -2,8 +2,11 @@
 <body>
 <p>Open in debugger to see rule activity</p>
 
+<!--  script src="https://npmcdn.com/node-uuid@1.4.7/uuid.js"></script>
+<script src="../node_modules/paralleljs/lib/parallel.js"></script>
+<script src="../node_modules/webhamsters/src/hamsters.js"></script -->
 <script src="../index.js"></script>
-<script src="http://cdn.jsdelivr.net/bluebird/3.3.4/bluebird.min.js"></script>
+
 <script id="example">
 
 var not = RuleReactor.not;
@@ -14,41 +17,38 @@ function Phase() {
 }
 function Counter() {
 	this.count = 0;
-	this.max = 100;
+	this.max = 80;
 }
 function Pair(odd,even) {
 	this.odd = odd;
 	this.even = even;
+	//odd.pair = this;
+	//even.pair = this;
 }
 function TestData(id) {
 	this.id = (id ? id : 0);
 }
 
-var create = RuleReactor.createRule("create",0,{c: Counter,d: TestData},
-	function(c, d) {
-		return d.id < c.max;
+var create = RuleReactor.createRule("create",0,{c: Counter},
+	function(c) {
+		return c.count < c.max;
 	},
 	function(c) {
 		c.count++;
 		insert(new TestData(c.count));
 	});
 create.setOptions({optimize:"heap"});
-RuleReactor.createRule("name",0,{pair: Pair, phase: Phase},
-	function(pair,phase) {
-		return !pair.name && phase.name==="name";
-	},
-	function(pair) {
-		pair.name = pair.odd.id + ":" + pair.even.id;
-	});
-RuleReactor.createRule("pair",0,{d1: TestData, d2: TestData},
-	function(d1,d2) {
-		return d1.id % 2 === 0 && d2.id % 2 === 1;
+// just split this rule as an example, so small not really needed
+RuleReactor.createRule("pair",0,{p: Phase, d1: TestData, d2: TestData},
+	function(p,d1,d2) {
+		return p.name === "pair" && d1.id % 2 === 0 && d2.id % 2 === 1;// && !d1.pair && !d2.pair;
 	},
 	function(d1,d2) {
-		insert(new Pair(d2,d1));
+		new Pair(d2,d1);
 	});
+
 		
-RuleReactor.trace(0);
+RuleReactor.trace();
 var phase = new Phase();
 insert([new Counter(), new TestData(),phase]);
 RuleReactor.run(Infinity,false,function() {
@@ -56,7 +56,7 @@ RuleReactor.run(Infinity,false,function() {
 	console.log("Data Count: ",RuleReactor.data.length);
 	console.log("Executions: ",RuleReactor.run.executions);
 	console.log("RPS: ",RuleReactor.run.rps);
-	phase.name = "name";
+	phase.name = "pair";
 	RuleReactor.run(Infinity,false,function() {
 		console.log("Performance during updates across volumes of data");
 		console.log("Data Count: ",RuleReactor.data.length);
