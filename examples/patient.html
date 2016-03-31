@@ -85,7 +85,7 @@ RuleReactor.createRule("Penicillin",0,{d: Diagnosis,p: Patient},
 		return !p.treatment && d.name=="measles";
 	},
 	function(p) {
-		p.treatment = new Treatment("pennicillin");
+		p.treatment = new Treatment("penicillin");
 	});
 
 RuleReactor.createRule("Allergy Pills",0,{d: Diagnosis,p: Patient},

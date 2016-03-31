@@ -1,13 +1,27 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-//rule-reactor
+/* The GPL 3.0 License
 
-//Copyright (c) 2016 Simon Y. Blackwell, AnyWhichWay
-//MIT License - http://opensource.org/licenses/mit-license.php
+rule-reactor: A light weight, fast, expressive forward chaining business rule engine leveraging JavaScript internals and Functions as objects rather than Rete.
+
+Copyright (c) 2016 Simon Y. Blackwell
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 
 (function() {
 	"use strict";
-	// Throughout this code there are place map is used where forEach would be expected. This is because map is considerably faster
-	// in some JS engines in some places even though one would expect it to be allocating memory and we ignore the return value! 
 
 	var RuleReactor = {};
 
@@ -74,25 +88,23 @@
 	}
 	CXProduct.prototype.add = function(collections) {
 		var me = this;
-		collections.forEach(function(collection) {
-			me.collections.push(collection);
-		});
+		if(!me.fixed) {
+			collections.forEach(function(collection) {
+				me.collections.push(collection);
+			});
+		} // should throw if fixed
 		return me;
-	}
-	CXProduct.prototype.push = function(collectionIndex,element) {
-		this.collections[collectionIndex].push(element);
-		return this;
 	}
 	function get(n,collections,dm,c) {
 		for (var i=collections.length;i--;)c[i]=collections[i][(n/dm[i][0]<<0)%dm[i][1]];
 	}
-	CXProduct.prototype.get = function(n,pattern){
-		var me = this, c = [], size = 1;
-		for (var dm=[],f=1,l,i=me.collections.length;i--;f*=l){ dm[i]=[f,l=me.collections[i].length]; size*=me.collections[i].length; }
-		if(n>=size) {
+	CXProduct.prototype.get = function(index,pattern){
+		var me = this, c = [];
+		for (var dm=[],f=1,l,i=me.collections.length;i--;f*=l){ dm[i]=[f,l=me.collections[i].length];  }
+		if(index>=me.length) {
 			return undefined;
 		}
-		get(n,me.collections,dm,c);
+		get(index,me.collections,dm,c);
 		if(!pattern || pattern.every(function(value,i) {
 			return value===undefined || (typeof(value)==="function" ? value.call(c,c[i],i) : false) || c[i]===value;
 		})) {
@@ -106,7 +118,7 @@
 			var pos = collection.indexOf(row[i]);
 			if(pos>=0) {
 				index += (pos * dm[i]);
-				return true;
+				return false;
 			}
 			return false;
 		})) {
@@ -124,6 +136,12 @@
 		});
 		return new CXProduct(collections);
 	}
+	CXProduct.prototype.push = function(collectionIndex,element) {
+		if(!me.fixed) {
+			this.collections[collectionIndex].push(element);
+		} // if fixed should throw
+		return this;
+	}
 	CXProduct.prototype.verify = function(i,row) {
 		var me = this;
 		var match = me.get(i);
@@ -140,49 +158,30 @@
 				counter.count++;
 			}
 		} else {
-			for (var i=0;i<len;++i) p[d]=a[i], dive(d+1,counter,collections,lens,p,callback,pattern,test);
+			for (var i=0;i<len;++i) {
+				p[d]=a[i]; 
+				dive(d+1,counter,collections,lens,p,callback,pattern,test);
+			}
 		}
 		p.pop();
 	}
 	CXProduct.prototype.forEach1 = function(callback,pattern,test) {
-		var me = this, p=[],lens=[], counter={count:0};
-		for (var i=me.collections.length;i--;) { lens[i]=me.collections[i].length; }
-		dive(0,counter,me.collections,lens,p,callback,pattern,test);
+		var me = this, p=[],lens=[];
+		for (var i=me.collections.length;i--;) lens[i]=me.collections[i].length;
+		dive(0,{count:0},me.collections,lens,p,callback,pattern,test);
 	}
-	/*CXProduct.prototype.forEach2 = function(callback,pattern,tests) {
+	CXProduct.prototype.forEach2 = function(callback,pattern,test) {
 		var me = this, i = 0;
-		while(i<me.length) {
-			var value = me.get(i);
-			var params = {tomatch:value,pattern:pattern,index:i,tests:(tests ? tests.map(function(test) { return test+""; }) : []),required:(tests ? tests.map(function(test) { return test.required; }) : undefined)};
-			hamsters.run(params,function() {
-				var tomatch = params.tomatch,
-					pattern = (params.pattern ? params.pattern : []),
-					index = params.index,
-					tests = params.tests,
-					required = params.required;
-				function runtest(fstr,required,tomatch) {
-					var test = Function("return " + fstr)(),
-						args = new Array();
-					if(required) {
-						return test.apply(null,required.map(function(index) { return tomatch[index]; }));
-					} else {
-						return test.apply(null,tomatch);
-					}
-					
+		do {
+			if(!me.deleted[i]) {
+				var value = me.get(i);
+				if(value!==undefined) {
+					callback(value);
 				}
-				if(pattern.every(function(element,i) {
-					return element==null || element===tomatch[i];
-				}) && tests.every(function(test,i) { return runtest(test,(required ? required[i] : undefined),tomatch); })) {
-					rtn.data.push(tomatch,index);
-				}
-			},function(output) {
-				if(output[0].length>0) {
-					callback(output[0][0],output[0][1]);
-				}
-			},1,false);
+			}
 			i++;
-		}
-	}*/
+		} while(value!==undefined);
+	}
 	CXProduct.prototype.forEach = CXProduct.prototype.forEach1;
 	
 	function getFunctionArgs(f) {
