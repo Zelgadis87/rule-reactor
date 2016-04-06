@@ -1,0 +1,65 @@
+<html>
+<body>
+
+<p>Rule base adapted from: http://www.csis.ysu.edu/~john/824/examples/EMH1.txt</p>
+
+<p>Open in debugger to see rule activity</p>
+<script src="../browser/rule-reactor.js"></script>
+<script id="example">
+
+var reactor = new RuleReactor();
+function not() { return reactor.not.apply(reactor,arguments); }
+function assert() { return reactor.assert.apply(reactor,arguments); }
+function exists() { return reactor.exists.apply(reactor,arguments); }
+function every() { return reactor.every.apply(reactor,arguments); }
+
+function Person(name) { this.name = name; }
+function Home(owner) { 
+	this.owner = owner; 
+}
+
+reactor.createRule("exists1",0,{person: Person},
+	function(person) {
+		return not(exists({home: Home},function(home) { return home.owner === person; }));
+	},
+	function(person) {
+		person.home = new Home(person);
+	});
+reactor.createRule("new home",1,{home: Home},
+	function(home) {
+		return home.owner!==undefined;
+	},
+	function(home) {
+		console.log("New home created: ",home);
+	});
+reactor.createRule("every",0,{},
+	function() {
+		return every({person: Person},function(person) { return person.home!==undefined; });
+	},
+	function() {
+		console.log("Everyone universaly has a home!");
+	});
+reactor.createRule("exists2",0,{h: Home, p: Person},
+	function(h) {
+		return exists({p: Person},{p: {home: h}});
+	},
+	function(h) {
+		console.log(h," is assigned to a person.");
+	});
+
+reactor.trace(3);
+
+var p = new Person("joe");
+reactor.assert(p);
+reactor.run(Infinity,true,function() { 
+	console.log("done"); 
+});
+
+
+
+</script>
+
+<script>
+document.write("<pre>" + document.getElementById("example").textContent + "</pre>"); 
+</script>
+</body></html>

@@ -1,0 +1,34 @@
+<html>
+<body>
+
+<p>Rule base adapted from: http://www.csis.ysu.edu/~john/824/examples/EMH1.txt</p>
+
+<p>Open in debugger to see rule activity</p>
+<script src="../browser/rule-reactor.js"></script>
+<script id="example">
+var reactor = new RuleReactor();
+function assert() { return reactor.assert.apply(reactor,arguments); }
+
+
+reactor.createRule("match",0,{number: Number},
+	function(number) {
+		return number==1;
+	},
+	function(number) {
+		console.log(number);
+	});
+
+reactor.trace(3);
+
+var n = new Number(1);
+reactor.assert(n);
+reactor.run();
+
+
+
+</script>
+
+<script>
+document.write("<pre>" + document.getElementById("example").textContent + "</pre>"); 
+</script>
+</body></html>

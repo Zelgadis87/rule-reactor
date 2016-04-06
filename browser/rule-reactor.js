@@ -19,11 +19,9 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
+var uuid = require("uuid");
 (function() {
 	"use strict";
-
-	var RuleReactor = {};
 
 	function intersection(array) {
 		var arrays = arguments.length;
@@ -82,6 +80,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 	
 //	portions from http://phrogz.net/lazy-cartesian-product
 	function CXProduct(collections){
+		this.deleted = {};
 		this.collections = (collections ? collections : []);
 		Object.defineProperty(this,"length",{set:function() {},get:function() { var size = 1; this.collections.forEach(function(collection) { size *= collection.length; }); return size; }});
 		Object.defineProperty(this,"size",{set:function() {},get:function() { return this.length; }});
@@ -94,6 +93,26 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 			});
 		} // should throw if fixed
 		return me;
+	}
+	function testpattern(pattern,row) {
+		return pattern.length===row.length && row.every(function(element,i) {
+			return pattern[i]===undefined || pattern[i]===element || (typeof(pattern[i])==="function" && pattern[i].call(row,row[i],i));
+		});
+	}
+	CXProduct.prototype.every = function(callback,pattern,test) {
+		var me = this, i = 0;
+		do {
+			if(!me.deleted[i]) {
+				var value = me.get(i);
+				if(value!==undefined) {
+					if((!test || test(value)) && (!pattern || testpattern(pattern,value)) && !callback(value)) {
+						return false;
+					};
+				}
+			}
+			i++;
+		} while(value!==undefined); 
+		return true;
 	}
 	function get(n,collections,dm,c) {
 		for (var i=collections.length;i--;)c[i]=collections[i][(n/dm[i][0]<<0)%dm[i][1]];
@@ -141,6 +160,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 			this.collections[collectionIndex].push(element);
 		} // if fixed should throw
 		return this;
+	}
+	CXProduct.prototype.some = function(callback,pattern,test) {
+		var me = this, i = 0;
+		do {
+			if(!me.deleted[i]) {
+				var value = me.get(i);
+				if(value!==undefined) {
+					if((!test || test(value)) && (!pattern || testpattern(pattern,value)) && callback(value)) {
+						return true;
+					};
+				}
+			}
+			i++;
+		} while(value!==undefined); 
+		return false;
 	}
 	CXProduct.prototype.verify = function(i,row) {
 		var me = this;
@@ -192,18 +226,63 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 		result.forEach(function(arg,i) {
 			result[i] = arg.trim();
 		});
+		if(result.length===1 && result[0]==="") {
+			return [];
+		}
 		return result;
 	}
-	function compile(rule) {
-		var variables = Object.keys(rule.domain), domains = {};
-		variables.forEach(function(variable) {
-			if(!domains[variable]) {
-				domains[variable]=0;
+	function definePropertyGenerator(ruleReactor,constructor,key) {
+		var propertyGenerator = function(value) {
+			var get = function() {
+				return get.value;
+			};
+			get.value = value;
+			var set = function(value) {
+				var instance = this;
+				if(instance.__rrid__ && get.value!==value) {
+					if(me.tracelevel>2) {
+						Console.log("Modify: ",instance,key,get.value,"=>",value);
+					}
+					var oldvalue = get.value;
+					// set new value
+					get.value = value;
+					updateIndex(this.constructor.index,instance,key,oldvalue);
+					ruleReactor.dataModified = true;
+					// if the value is an object that has possible rule matches, assert it
+					if(value && value.rules) {
+						ruleReactor.assert(value);
+					}
+					// re-test the rules that pattern match the key
+					Object.keys(instance.rules).forEach(function(rulename) {
+						var rule = instance.rules[rulename];
+						if(Object.keys(rule.range).some(function(variable) {
+							return rule.range[variable][key] && instance instanceof rule.domain[variable];
+						})) {
+							var activations = rule.activations.get(instance);
+							if(activations) {
+								activations.forEach(function(activation) {
+									activation.delete();
+								});
+							}
+							rule.test(instance,key);
+						}
+					});
+				}
 			}
-			domains[variable]++;
-		});
+			Object.defineProperty(this,key,{enumerable:true,configurable:true,get:get,set:set});
+			return get.value;
+		}
+		Object.defineProperty(constructor.prototype,key,{enumerable:true,configurable:true,get:propertyGenerator,set:propertyGenerator});
+	}
+	function compile(rule) {
+		var me = this, variables = Object.keys(rule.domain);
 		variables.forEach(function(variable) {
 			var cons = rule.domain[variable];
+			if(typeof(cons)!=="function") {
+				throw new TypeError("Domain variable " + variable + " is not a constructor in rule " + rule.name);
+			}
+			cons.instances = (cons.instances ? cons.instances : []);
+			cons.index = (cons.index ? cons.index : {});
 			cons.prototype.rules = (cons.prototype.rules ? cons.prototype.rules : {});
 			cons.prototype.rules[rule.name] = rule;
 			cons.prototype.activeKeys = (cons.prototype.activeKeys ? cons.prototype.activeKeys : {});
@@ -221,16 +300,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 			rule.range[variable] = {};
 			rule.bindings[variable] = (rule.bindings[variable] ? rule.bindings[variable] : []);
 			// extract instance keys from condition using a side-effect of replace
-			rule.conditions.forEach(function(condition) {
-				if(!condition.required) {
-					var args = getFunctionArgs(condition);
-					condition.required = new Array(args.length);
-					args.forEach(function(arg,i) {
-						condition.required[i] = variables.indexOf(arg);
-					});
-				}
-				condition.range = (condition.range ? condition.range : {})
-				condition.range[variable] = {};
+			rule.conditions.forEach(function(condition,cnum) {
 				(condition+"").replace(new RegExp("(\\b"+variable+"\\.\\w+\\b)","g"),
 					function(match) { 
 						var parts = match.split("."),key = parts[1];
@@ -238,23 +308,39 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 						cons.prototype.activeKeys[key] = true;
 						// cache what keys are associated with what variables
 						rule.range[variable][key] = (rule.range[variable][key] ? rule.range[variable][key] : true);
-						condition.range[variable][key] = (condition.range[variable][key] ? condition.range[variable][key] : true);
 						// don't really do a replacement!
 						return match;
 					}
 				);
 			});
-			var args = getFunctionArgs(rule.action);
-			if(args.indexOf(variable)>=0) {
-				rule.action.domain = (rule.action.domain ? rule.action.domain : {});
-				rule.action.domain[variable] = true;
-			}
+			(rule.action+"").replace(new RegExp("(\\b"+variable+"\\.\\w+\\b)","g"),
+					function(match) { 
+						var parts = match.split("."),key = parts[1];
+						// cache reactive keys on class prototype
+						cons.prototype.activeKeys[key] = true;
+						// don't really do a replacement!
+						return match;
+					}
+				);
 		});
 		rule.compiledConditions = [];
 		rule.conditions.forEach(function(condition,i) {
+			if((condition+"").indexOf("return")===-1) {
+				throw new TypeError("Condition function missing a return statement in rule '" + rule.name + "' condition " + i);
+			}
+			var args = getFunctionArgs(condition);
+			condition.required = new Array(args.length);
+			args.forEach(function(arg,j) {
+				var required = variables.indexOf(arg);
+				if(required===-1) {
+					throw new ReferenceError("Referenced domain variable '" + arg + "' undefined in rule '" + rule.name + "' condition ",i);
+				}
+				condition.required[j] = required;
+			});
 			rule.compiledConditions.push(function(match) {
 				var me = this, args = [];
-				if(condition.required.every(function(i) {
+				// no required = domainless
+				if(!condition.required || condition.required.every(function(i) {
 					if(match[i]!==undefined) {
 						return args.push(match[i]);
 					}
@@ -264,14 +350,35 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 				return true;
 			});
 		});
+		var args = getFunctionArgs(rule.action);
+		rule.action.required = new Array(args.length);
+		args.forEach(function(arg,i) {
+			var required = variables.indexOf(arg);
+			if(required===-1) {
+				throw new ReferenceError("Referenced domain variable '" + arg + "' undefined in rule '" + rule.name + "' action");
+			}
+			rule.action.required[i] = required;
+			
+		});
+		rule.compiledAction = function(match) {
+			var me = this, args = [];
+			// no required = domainless
+			if(!rule.action.required || rule.action.required.every(function(i) {
+				if(match[i]!==undefined) {
+					return args.push(match[i]);
+				}
+			})) {
+				rule.action.apply(me,args);
+			}
+		};
 	}
 
-	// dummy console so logging can easily be removed
+	// dummy console so logging can easily be retractd
 	var Console = {};
 	Console.log = function() { 
 		console.log.apply(console,arguments); 
 	};
-	// uncomment line below to remove logging
+	// uncomment line below to retract logging
 	//Console.log = function() {};
 
 	function Activation(rule,match,index,bindings,instance) {
@@ -281,40 +388,39 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 		me.index = index;
 		me.bindings = bindings;
 		me.instance = instance;
-		if(!RuleReactor.agenda.some(function(activation,i) {
-			if(activation.rule.salience<=me.rule.salience) {
-				RuleReactor.agenda.splice(i,0,me);
+		me.rule.activated++;
+		if(!me.rule.reactor.agenda.some(function(activation,i) {
+			if(activation.rule.salience>me.rule.salience) {
+				me.rule.reactor.agenda.splice(i,0,me);
 				return true;
 			}
 		})) {
-			RuleReactor.agenda.push(me);
+			me.rule.reactor.agenda.push(me);
 		}
 		var activations = rule.activations.get(instance);
 		if(!activations) {
 			activations = [];
-			rule.activations.set(instance,[]);
 		}
 		activations.push(me);
-		if(RuleReactor.tracelevel>1) {
+		rule.activations.set(instance,activations);
+		if(me.rule.reactor.tracelevel>1) {
 			Console.log("Activating: ",rule,match);
 		}
 	}
-	Activation.prototype.execute = function() {
+	Activation.prototype.execute = function(index) {
 		var me = this;
-		if(me.bindings.verify(me.index,me.match) && me.rule.compiledConditions.every(function(condition) {
+		// re-test just in-case
+		me.delete(undefined,index,true);
+		if((!me.bindings || me.bindings.verify(me.index,me.match)) && me.rule.compiledConditions.every(function(condition) {
 			return condition.call(me,me.match);
 		})) {
-			if(RuleReactor.tracelevel>0) {
-				Console.log("Firing: ",this.rule,this.match);
-			}
 			me.rule.fire(me.match);
 		}
-		me.delete();
 	}
-	Activation.prototype.delete = function(instance) {
+	Activation.prototype.delete = function(instance,index,supresslog) {
 		var me = this;
 		if(!instance || me.match.indexOf(instance)>=0) {
-			if(RuleReactor.tracelevel>1) {
+			if(!supresslog && me.rule.reactor.tracelevel>1) {
 				Console.log("Deactivating: ",me.rule,me.match);
 			}
 			var activations = me.rule.activations.get(me.instance);
@@ -324,26 +430,48 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 					activations.splice(i,1);
 				}
 			}
-			var i = RuleReactor.agenda.indexOf(me);
+			if(index!=undefined) {
+				if(index===me.rule.reactor.agenda.length-1) {
+					me.rule.reactor.agenda.pop();
+					return;
+				}
+				me.rule.reactor.agenda.splice(index,1);
+				return;
+			}
+			var i = me.rule.reactor.agenda.indexOf(me);
 			if(i>=0) {
-				RuleReactor.agenda.splice(i,1);
+				me.rule.reactor.agenda.splice(i,1);
 			}
 		}
 	}
 
-	function Rule(name,salience,domain,condition,action) {
-		this.name = name;
-		this.salience = salience;
-		this.domain = domain;
-		this.range = {};
-		this.conditions = (Array.isArray(condition) || condition instanceof Array ? condition : [condition]);
-		this.pattern = new Array(Object.keys(domain).length);
-		this.action = action;
-		this.bindings = {};
-		this.activations = new Map();
-		this.options = {optimize:"stack"};
-		compile(this);
-		if(RuleReactor.tracelevel>2) {
+	function Rule(reactor,name,salience,domain,condition,action) {
+		var me = this;
+		me.name = name;
+		me.reactor = reactor;
+		if(typeof(salience)!=="number") {
+			throw new TypeError("Salience " + salience + " is not a number in rule " + name);
+		}
+		me.salience = salience;
+		me.domain = domain;
+		if(typeof(domain)!=="object") {
+			throw new TypeError("Domain " + domain + " is not an object in rule " + name);
+		}
+		me.range = {};
+		me.conditions = (Array.isArray(condition) || condition instanceof Array ? condition : [condition]);
+		me.pattern = new Array(Object.keys(domain).length);
+		if(typeof(action)!=="function") {
+			throw new TypeError("Action " + action + " is not a function in rule " + name);
+		}
+		me.action = action;
+		me.bindings = {};
+		me.activations = new Map();
+		me.potentialMatches = 0;
+		me.tested = 0;
+		me.activated = 0;
+		me.fired = 0;
+		compile.call(reactor,this);
+		if(me.reactor.tracelevel>2) {
 			Console.log("New Rule: ",this);
 		}
 	} 
@@ -351,7 +479,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 		var me = this, variables = Object.keys(me.bindings), values = [];
 		variables.map(function(variable) {
 			if(instance instanceof me.domain[variable] && me.bindings[variable].indexOf(instance.__rrid__)===-1) {
-				if(RuleReactor.tracelevel>2) {
+				if(me.reactor.tracelevel>2) {
 					Console.log("Binding: ",me,variable,instance);
 				}
 				me.bindings[variable].push(instance);
@@ -368,19 +496,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 				me.test(instance);
 			}
 		}
-	};
-	Rule.prototype.fire = function(match) {
-		var me = this, variables = Object.keys(me.domain), args = [];
-		Object.keys(me.action.domain).forEach(function(actionvariable) {
-			args.push(match[variables.indexOf(actionvariable)]);
-		});
-		me.action.apply(me,args);
 	}
-	Rule.prototype.setOptions = function(options) {
-		var me = this;
-		Object.keys(options).forEach(function(key) {
-			me.options[key] = options[key];
+	Rule.prototype.delete = function() {
+		var me = this, variables = Object.keys(me.domain);
+		variables.forEach(function(variable) {
+			var cons = me.domain[variable];
+			delete cons.prototype.rules[me.name];
 		});
+	}
+	Rule.prototype.fire = function(match) {
+		var me = this;
+		if(me.reactor.tracelevel>0) {
+			Console.log("Firing: ",this,match);
+		}
+		this.fired++;
+		this.compiledAction(match);
 	}
 	Rule.prototype.test = function(instance,key,callback) { 
 		var me = this, variables = Object.keys(me.domain), result = false, values = [];
@@ -390,14 +520,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 		})) {
 			return result;
 		}
-		if(RuleReactor.tracelevel>2) {
+		if(me.reactor.tracelevel>2) {
 			Console.log("Testing: ",me,instance,key);
 		}
-		
+		me.tested++;
 		var test = function(match) {
 			return me.compiledConditions.every(function(condition) {
 				return condition.call(me,match);
 			});
+		}
+		if(me.cxproduct) {
+			me.potentialMatches = Math.max(me.potentialMatches,me.cxproduct.size);
 		}
 		if(instance) {
 			variables.forEach(function(variable,i) {
@@ -406,16 +539,24 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 					collections[i] = [instance];
 					var cxproduct = new CXProduct(collections);
 					cxproduct.forEach(function(match,i) {
-						new Activation(me,match,i,cxproduct);
+						new Activation(me,match,i,cxproduct,instance);
 						result = true;
 					},undefined,test); //me.conditions);
 				}
 			});
-		} else {
+		} else if(me.cxproduct) {
 			me.cxproduct.forEach(function(match,i) {
 				new Activation(me,match,i,me.cxproduct);
 				result = true;
 			},undefined,test); //me.conditions);
+		} else {
+			// tests domainless rules
+			if(test()) {
+				new Activation(me);
+				result = true;
+			} else {
+				me.reset(instance);
+			}
 		}
 		if(callback) {
 			callback(null,result);
@@ -425,15 +566,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 	}
 	Rule.prototype.reset = function(retest,instance) {
 		var me = this;
-		if(RuleReactor.tracelevel>2) {
+		if(me.reactor.tracelevel>2) {
 			Console.log("Reseting: ",me,instance);
 		}
 		me.activations.forEach(function(activations,activator) {
 			if(!instance || activator===instance) {
 				activations.forEach(function(activation) {
-					var i = RuleReactor.agenda.indexOf(activation);
+					var i = me.reactor.agenda.indexOf(activation);
 					if(i>=0) {
-						RuleReactor.agenda.splice(i,1);
+						me.reactor.agenda.splice(i,1);
 					}
 				});
 				
@@ -449,7 +590,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 		variables.map(function(variable) {
 			var i = me.bindings[variable].indexOf(instance);
 			if(i>=0) {
-				if(RuleReactor.tracelevel>2) {
+				if(me.reactor.tracelevel>2) {
 					Console.log("Unbinding: ",me,variable,instance);
 				}
 				me.bindings[variable].splice(i,1);
@@ -463,36 +604,137 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 		});
 	}
 
-	RuleReactor.rules = {};
-	RuleReactor.data = []; new Map();
-	RuleReactor.agenda = [];
-	RuleReactor.createRule = function(name,salience,domain,condition,action) {
-		var rule = new Rule(name,salience,domain,condition,action);
-		RuleReactor.rules[rule.name] = rule;
-		return rule;
+	function indexObject(index,instance) {
+		var keys = Object.keys(instance);
+		keys.forEach(function(key) {
+			index[key] = (index[key] ? index[key] : {});
+			var value = instance[key], type = typeof(value), valuekey, typekey;
+			if(type==="object" && value) {
+				if(value.__rrid__===undefined) {
+					Object.defineProperty(value,"__rrid__",{value:uuid.v4()});
+				}
+				valuekey = value.constructor.name + "@" + value.__rrid__;
+			} else {
+				valuekey = value;
+			}
+			if(value===null || value===undefined) {
+				typekey = "undefined";
+			} else {
+				typekey = type;
+			}
+			index[key][valuekey] = (index[key][valuekey] ? index[key][valuekey] : {});
+			index[key][valuekey][typekey] = (index[key][valuekey][typekey] ? index[key][valuekey][typekey] : {});
+			index[key][valuekey][typekey][instance.__rrid__] = instance;
+		});
 	}
-	RuleReactor.get = function(idOrObject) {
-		if(typeof(idOrObject)==="number") {
-			return RuleReactor.data[idOrObject];
+	function updateIndex(index,instance,key,oldValue) {
+		if(instance[key]===undefined && !index[key]) return;
+		index[key] = (index[key] ? index[key] : {});
+		var value = instance[key], type = typeof(value), oldtype = typeof(oldValue), oldvaluekey, oldtypekey, valuekey, typekey;
+		if(type==="object" && value) {
+			if(value.__rrid__===undefined) {
+				Object.defineProperty(value,"__rrid__",{value:uuid.v4()});
+			}
+			valuekey = value.constructor.name + "@" + value.__rrid__;
+		} else {
+			valuekey = value;
 		}
-		return RuleReactor.data[RuleReactor.data.indexOf(idOrObject)];
+		if(value===null || value===undefined) {
+			typekey = "undefined";
+		} else {
+			typekey = type;
+		}
+		if(oldtype==="object" && oldValue) {
+			oldvaluekey = oldValue.constructor.name + "@" + oldValue.__rrid__;
+		} else {
+			oldvaluekey = oldValue;
+		}
+		if(value===null || value===undefined) {
+			typekey = "undefined";
+		} else {
+			typekey = type;
+		}
+		if(oldValue===null || oldValue===undefined) {
+			oldtypekey = "undefined";
+		} else {
+			oldtypekey = oldtype;
+		}
+		index[key][valuekey] = (index[key][valuekey] ? index[key][valuekey] : {});
+		index[key][valuekey][typekey] = (index[key][valuekey][typekey] ? index[key][valuekey][typekey] : {});
+		index[key][valuekey][typekey][instance.__rrid__] = instance;
+		if(index[key][oldvaluekey] && index[key][oldvaluekey][oldtypekey]) {
+			delete index[key][oldvaluekey][oldtypekey][instance.__rrid__];
+		}
 	}
-	RuleReactor.insert = function(instances,callback) {
+	function matchObject(index,instance,parentkeys,parentinstances) {
+		var parentkeys = (parentkeys ? parentkeys : []), 
+			parentinstances = (parentinstances ? parentinstances : []),
+			keys = Object.keys(instance);
+		return keys.every(function(key) {
+			if(!index[key]) return false;
+			var value = instance[key], type = typeof(value), valuekey, typekey;
+			if(type==="object" && value) {
+				if(parentkeys.indexOf(key)>=0 && parentkeys.indexOf(key)===parentinstances.indexOf(value)) {
+					return true;
+				}
+				var valuekeys = Object.keys(index[key]);
+				return valuekeys.some(function(valuekey) {
+					var parts = valuekey.split("@");
+					if(parts.length!==2) {
+						return false;
+					}
+					var cons = Function("return " + parts[0])();
+					if(typeof(cons)!=="function" || !cons.index) {
+						return false;
+					}
+					parentkeys.push(key);
+					parentinstances.push(value);
+					return matchObject(cons.index,value,parentkeys,parentinstances);
+				});
+			} else {
+				valuekey = value;
+			}
+			if(value===null || value===undefined) {
+				typekey = "undefined";
+			} else {
+				typekey = type;
+			}
+			if(!index[key][valuekey]) return false;
+			if(!index[key][valuekey][typekey]) return false;
+			if(instance.__rrid__ && !index[key][valuekey][typekey][instance.__rrid__]) return false;
+			return true;
+		});
+	}
+	function RuleReactor () {
+		this.rules = {};
+		this.domainlessRules = {};
+		this.data = new Map();
+		this.agenda = [];
+	}
+	RuleReactor.prototype.assert = function(instances,callback) {
+		var me = this;
 		// add instance to class.constructor.instances
 		instances = (Array.isArray(instances) || instances instanceof Array ? instances : [instances]);
 		var instancestoprocess = [];
 		instances.forEach(function(instance) {
 			// don't bother processing instances that don't impact rules or are already in the data store
-			if(instance && typeof(instance)==="object" && instance.__rrid__===undefined) { // !RuleReactor.data.has(instance)
-				if(RuleReactor.tracelevel>2) {
-					Console.log("Insert: ",instance);
+			if(instance && typeof(instance)==="object") { // !RuleReactor.data.has(instance)
+				if(instance.__rrid__===undefined) {
+					Object.defineProperty(instance,"__rrid__",{value:uuid.v4()});
 				}
-				Object.defineProperty(instance,"__rrid__",{value:RuleReactor.data.length});
-				RuleReactor.data.push(instance);
+				if(me.data.has(instance.__rrid)) {
+					return;
+				}
+				if(me.tracelevel>2) {
+					Console.log("Assert: ",instance);
+				}
+				me.data.set(instance.__rrid__,instance);
+				me.dataModified = true;
 				instancestoprocess.push(instance);
-				// need to change instances to JOQULAR like index
 				instance.constructor.instances = (instance.constructor.instances ? instance.constructor.instances : []);
 				instance.constructor.instances.push(instance);
+				instance.constructor.index = (instance.constructor.index ? instance.constructor.index : {});
+				indexObject(instance.constructor.index,instance);
 				// patch any keys on instance or those identified as active while compiling
 				var keys = Object.keys(instance);
 				if(instance.activeKeys) {
@@ -508,14 +750,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 					}
 					function rrset(value) {
 						if(rrget.value!==value) {
-							if(RuleReactor.tracelevel>2) {
+							if(me.tracelevel>2) {
 								Console.log("Modify: ",instance,key,rrget.value,"=>",value);
 							}
+							var oldvalue = rrget.value;
 							// set new value
 							rrget.value = value;
-							// if the value is an object that has possible rule matches, insert it
+							updateIndex(instance.constructor.index,instance,key,oldvalue);
+							me.dataModified = true;
+							// if the value is an object that has possible rule matches, assert it
 							if(value && value.rules) {
-								RuleReactor.insert(value);
+								me.assert(value);
 							}
 							// re-test the rules that pattern match the key
 							Object.keys(instance.rules).forEach(function(rulename) {
@@ -622,19 +867,105 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 			callback(null);
 		}
 	}
-	RuleReactor.not = function(value) {
+	RuleReactor.prototype.createRule = function(name,salience,domain,condition,action) {
+		var me = this, rule = new Rule(this,name,salience,domain,condition,action);
+		me.rules[rule.name] = rule;
+		if(Object.keys(domain).length===0) {
+			me.domainlessRules[rule.name] = rule;
+		}
+		return rule;
+	}
+	RuleReactor.prototype.every = function(domain,test) {
+		if(typeof(domain)!=="object") {
+			throw new TypeError("Domain " + domain + " is not an object in universal quantification");
+		}
+		if((test+"").indexOf("return ")===-1) {
+			throw new TypeError("Universal quantification condition function missing a return statement: " + test);
+		}
+		if(!test.cxproduct) {
+			var variables = Object.keys(domain), collections = [], args;
+			variables.forEach(function(variable) {
+				domain[variable].instances = (domain[variable].instances ? domain[variable].instances: [])
+				collections.push(domain[variable].instances);
+			});
+			test.cxproduct = new CXProduct(collections);
+			args = getFunctionArgs(test);
+			if(args.length>0) {
+				test.required = args.map(function(variable) { 
+					var i = variables.indexOf(variable);
+					if(i===-1) {
+						throw new ReferenceError("Undeclared domain variable '" + variable + "' in universal quantification condition function");
+					}
+					return i; 
+				});
+			}
+		}
+		return test.cxproduct.every(function(row) {
+			var args = [];
+			if(!test.required || test.required.every(function(index) { args.push(row[index]); return row[index]!==undefined; })) {
+				return test.apply(null,args);
+			}
+		});
+	}
+	RuleReactor.prototype.exists = function(domain,test) {
+		if(typeof(domain)!=="object") {
+			throw new TypeError("Domain " + domain + " is not an object in existential quantification");
+		}
+		var variables = Object.keys(domain);
+		if(typeof(test)==="object") {
+			if(!test) {
+				throw new TypeError("Existential quantification condition is null");
+			}
+			return Object.keys(test).every(function(variable) {
+				var i = variables.indexOf(variable);
+				if(i===-1) {
+					throw new ReferenceError("Undeclared domain variable '" + variable + "' in existential quantification match condition");
+				}
+				return matchObject(domain[variable].index,test[variable]);
+			});
+		}
+		if((test+"").indexOf("return ")===-1) {
+			throw new TypeError("Existential quantification condition function missing a return statement: " + test);
+		}
+		if(!test.cxproduct) {
+			var collections = [], args;
+			variables.forEach(function(variable) {
+				domain[variable].instances = (domain[variable].instances ? domain[variable].instances: [])
+				collections.push(domain[variable].instances);
+			});
+			test.cxproduct = new CXProduct(collections);
+			args = getFunctionArgs(test);
+			if(args.length>0) {
+				test.required = args.map(function(variable) { 
+					var i = variables.indexOf(variable);
+					if(i===-1) {
+						throw new ReferenceError("Undeclared domain variable '" + variable + "' in existential quantification condition function");
+					}
+					return i; 
+				});
+			}
+		}
+		return test.cxproduct.some(function(row) {
+			var args = [];
+			if(!test.required || test.required.every(function(index) { args.push(row[index]); return row[index]!==undefined; })) {
+				return test.apply(null,args);
+			}
+		});
+	}
+	RuleReactor.prototype.not = function(value) {
 		return !value;
 	}
-	RuleReactor.remove = function() {
-		var run = run = (arguments[arguments.length-1] instanceof Object ? false : arguments[arguments.length-1]);
-		var instances = [].slice.call(arguments);
+	RuleReactor.prototype.retract = function(instances,run) {
+		var me = this;
+		instances = (Array.isArray(instances) || instances instanceof Array ? instances : [instances]);
 		instances.forEach(function(instance) {
 			if(instance && typeof(instance)==="object") {
-				if(RuleReactor.tracelevel>2) {
-					Console.log("Remove: ",instance);
+				if(me.tracelevel>2) {
+					Console.log("Retract: ",instance);
 				}
-				// remove from data
-				RuleReactor.data.delete(instance);
+				// retract from data
+				me.data.delete(instance.__rrid__);
+				me.dataModified = true;
 				// restore instance properties
 				Object.keys(instance).forEach(function(key) {
 					var desc = Object.getOwnPropertyDescriptor(instance,key);
@@ -662,51 +993,70 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 			}
 		});
 		if(run) {
-			setTimeout(function() { RuleReactor.run(); });
+			setTimeout(function() { me.run(); });
 		}
 	}
-	RuleReactor.reset = function(facts) {
-		Object.keys(RuleReactor.rules).forEach(function(rulename) {
-			RuleReactor.rules[rulename].reset();
+	RuleReactor.prototype.reset = function(facts) {
+		var me = this;
+		Object.keys(me.rules).forEach(function(rulename) {
+			me.rules[rulename].reset();
 		});
 		if(facts) {
 			var data = [];
-			RuleReactor.data.forEach(function(instance) {
+			me.data.forEach(function(instance) {
 				data.push(instance);
 			});
-			data.push(false);
-			RuleReactor.remove(data,false);
+			me.retract(data,false);
 		}
 	}
-	RuleReactor.run = function(max,loose,callback) {
+	RuleReactor.prototype.run = function(max,loose,callback) {
+		var me = this;
 		function run(loose) {
-			while (RuleReactor.agenda.length>0 && RuleReactor.run.executions<RuleReactor.run.max) {
-				RuleReactor.run.executions++;
-				RuleReactor.agenda[RuleReactor.agenda.length-1].execute();
+			while (me.agenda.length>0 && me.run.executions<me.run.max) {
+				me.run.executions++;
+				me.dataModified = false;
+				me.agenda[me.agenda.length-1].execute(me.agenda.length-1);
+				if(me.dataModified===true) {
+					// causes a loop, put in assert? .. but then doe snot run
+					Object.keys(me.domainlessRules).forEach(function(rulename) {
+						me.domainlessRules[rulename].test();
+					});
+				}
 				if(loose) {
 					setTimeout(run,0,loose);
 					return;
 				}
 			}
-			RuleReactor.run.stop = new Date();
-			RuleReactor.run.rps = (RuleReactor.run.executions / (RuleReactor.run.stop.getTime() - RuleReactor.run.start.getTime())) * 1000;
-			RuleReactor.run.running = false;
+			me.run.stop = new Date();
+			me.run.rps = (me.run.executions / (me.run.stop.getTime() - me.run.start.getTime())) * 1000;
+			me.run.running = false;
+			if(me.tracelevel>0) {
+				Console.log("Data Count: ",me.data.size);
+				Console.log("Executions: ",me.run.executions);
+				Console.log("RPS: ",me.run.rps);
+			}
+			if(me.tracelevel>1) {
+				Object.keys(me.rules).forEach(function(rulename) {
+					var rule = me.rules[rulename];
+					Console.log(rule.name,rule.potentialMatches,rule.tested,rule.activated,rule.fired);
+				});
+			}
 			if(typeof(callback)==="function") {
 				callback();
 			}
 		}
-		if(RuleReactor.run.running) { return true; }
-		RuleReactor.run.max = (max ? max : Infinity);
-		RuleReactor.run.running = true;
-		RuleReactor.run.executions = 0;
-		RuleReactor.run.start = new Date();
-		if(RuleReactor.tracelevel>0) {
+		if(me.run.running) { return true; }
+		me.run.max = (max ? max : Infinity);
+		me.run.running = true;
+		me.run.executions = 0;
+		me.run.start = new Date();
+		if(me.tracelevel>0) {
 			Console.log("Run: ",max,loose);
 		}
 		run(loose);
 	}
-	RuleReactor.trace = function(level) {
-		RuleReactor.tracelevel = level;
+	RuleReactor.prototype.trace = function(level) {
+		this.tracelevel = level;
 	}
 
 	if (this.exports) {
@@ -720,4 +1070,224 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 }).call((typeof(window)!=="undefined" ? window : (typeof(module)!=="undefined" ? module : null)));
 
 
-},{}]},{},[1]);
+},{"uuid":3}],2:[function(require,module,exports){
+(function (global){
+
+var rng;
+
+if (global.crypto && crypto.getRandomValues) {
+  // WHATWG crypto-based RNG - http://wiki.whatwg.org/wiki/Crypto
+  // Moderately fast, high quality
+  var _rnds8 = new Uint8Array(16);
+  rng = function whatwgRNG() {
+    crypto.getRandomValues(_rnds8);
+    return _rnds8;
+  };
+}
+
+if (!rng) {
+  // Math.random()-based (RNG)
+  //
+  // If all else fails, use Math.random().  It's fast, but is of unspecified
+  // quality.
+  var  _rnds = new Array(16);
+  rng = function() {
+    for (var i = 0, r; i < 16; i++) {
+      if ((i & 0x03) === 0) r = Math.random() * 0x100000000;
+      _rnds[i] = r >>> ((i & 0x03) << 3) & 0xff;
+    }
+
+    return _rnds;
+  };
+}
+
+module.exports = rng;
+
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{}],3:[function(require,module,exports){
+//     uuid.js
+//
+//     Copyright (c) 2010-2012 Robert Kieffer
+//     MIT License - http://opensource.org/licenses/mit-license.php
+
+// Unique ID creation requires a high quality random # generator.  We feature
+// detect to determine the best RNG source, normalizing to a function that
+// returns 128-bits of randomness, since that's what's usually required
+var _rng = require('./rng');
+
+// Maps for number <-> hex string conversion
+var _byteToHex = [];
+var _hexToByte = {};
+for (var i = 0; i < 256; i++) {
+  _byteToHex[i] = (i + 0x100).toString(16).substr(1);
+  _hexToByte[_byteToHex[i]] = i;
+}
+
+// **`parse()` - Parse a UUID into it's component bytes**
+function parse(s, buf, offset) {
+  var i = (buf && offset) || 0, ii = 0;
+
+  buf = buf || [];
+  s.toLowerCase().replace(/[0-9a-f]{2}/g, function(oct) {
+    if (ii < 16) { // Don't overflow!
+      buf[i + ii++] = _hexToByte[oct];
+    }
+  });
+
+  // Zero out remaining bytes if string was short
+  while (ii < 16) {
+    buf[i + ii++] = 0;
+  }
+
+  return buf;
+}
+
+// **`unparse()` - Convert UUID byte array (ala parse()) into a string**
+function unparse(buf, offset) {
+  var i = offset || 0, bth = _byteToHex;
+  return  bth[buf[i++]] + bth[buf[i++]] +
+          bth[buf[i++]] + bth[buf[i++]] + '-' +
+          bth[buf[i++]] + bth[buf[i++]] + '-' +
+          bth[buf[i++]] + bth[buf[i++]] + '-' +
+          bth[buf[i++]] + bth[buf[i++]] + '-' +
+          bth[buf[i++]] + bth[buf[i++]] +
+          bth[buf[i++]] + bth[buf[i++]] +
+          bth[buf[i++]] + bth[buf[i++]];
+}
+
+// **`v1()` - Generate time-based UUID**
+//
+// Inspired by https://github.com/LiosK/UUID.js
+// and http://docs.python.org/library/uuid.html
+
+// random #'s we need to init node and clockseq
+var _seedBytes = _rng();
+
+// Per 4.5, create and 48-bit node id, (47 random bits + multicast bit = 1)
+var _nodeId = [
+  _seedBytes[0] | 0x01,
+  _seedBytes[1], _seedBytes[2], _seedBytes[3], _seedBytes[4], _seedBytes[5]
+];
+
+// Per 4.2.2, randomize (14 bit) clockseq
+var _clockseq = (_seedBytes[6] << 8 | _seedBytes[7]) & 0x3fff;
+
+// Previous uuid creation time
+var _lastMSecs = 0, _lastNSecs = 0;
+
+// See https://github.com/broofa/node-uuid for API details
+function v1(options, buf, offset) {
+  var i = buf && offset || 0;
+  var b = buf || [];
+
+  options = options || {};
+
+  var clockseq = options.clockseq !== undefined ? options.clockseq : _clockseq;
+
+  // UUID timestamps are 100 nano-second units since the Gregorian epoch,
+  // (1582-10-15 00:00).  JSNumbers aren't precise enough for this, so
+  // time is handled internally as 'msecs' (integer milliseconds) and 'nsecs'
+  // (100-nanoseconds offset from msecs) since unix epoch, 1970-01-01 00:00.
+  var msecs = options.msecs !== undefined ? options.msecs : new Date().getTime();
+
+  // Per 4.2.1.2, use count of uuid's generated during the current clock
+  // cycle to simulate higher resolution clock
+  var nsecs = options.nsecs !== undefined ? options.nsecs : _lastNSecs + 1;
+
+  // Time since last uuid creation (in msecs)
+  var dt = (msecs - _lastMSecs) + (nsecs - _lastNSecs)/10000;
+
+  // Per 4.2.1.2, Bump clockseq on clock regression
+  if (dt < 0 && options.clockseq === undefined) {
+    clockseq = clockseq + 1 & 0x3fff;
+  }
+
+  // Reset nsecs if clock regresses (new clockseq) or we've moved onto a new
+  // time interval
+  if ((dt < 0 || msecs > _lastMSecs) && options.nsecs === undefined) {
+    nsecs = 0;
+  }
+
+  // Per 4.2.1.2 Throw error if too many uuids are requested
+  if (nsecs >= 10000) {
+    throw new Error('uuid.v1(): Can\'t create more than 10M uuids/sec');
+  }
+
+  _lastMSecs = msecs;
+  _lastNSecs = nsecs;
+  _clockseq = clockseq;
+
+  // Per 4.1.4 - Convert from unix epoch to Gregorian epoch
+  msecs += 12219292800000;
+
+  // `time_low`
+  var tl = ((msecs & 0xfffffff) * 10000 + nsecs) % 0x100000000;
+  b[i++] = tl >>> 24 & 0xff;
+  b[i++] = tl >>> 16 & 0xff;
+  b[i++] = tl >>> 8 & 0xff;
+  b[i++] = tl & 0xff;
+
+  // `time_mid`
+  var tmh = (msecs / 0x100000000 * 10000) & 0xfffffff;
+  b[i++] = tmh >>> 8 & 0xff;
+  b[i++] = tmh & 0xff;
+
+  // `time_high_and_version`
+  b[i++] = tmh >>> 24 & 0xf | 0x10; // include version
+  b[i++] = tmh >>> 16 & 0xff;
+
+  // `clock_seq_hi_and_reserved` (Per 4.2.2 - include variant)
+  b[i++] = clockseq >>> 8 | 0x80;
+
+  // `clock_seq_low`
+  b[i++] = clockseq & 0xff;
+
+  // `node`
+  var node = options.node || _nodeId;
+  for (var n = 0; n < 6; n++) {
+    b[i + n] = node[n];
+  }
+
+  return buf ? buf : unparse(b);
+}
+
+// **`v4()` - Generate random UUID**
+
+// See https://github.com/broofa/node-uuid for API details
+function v4(options, buf, offset) {
+  // Deprecated - 'format' argument, as supported in v1.2
+  var i = buf && offset || 0;
+
+  if (typeof(options) == 'string') {
+    buf = options == 'binary' ? new Array(16) : null;
+    options = null;
+  }
+  options = options || {};
+
+  var rnds = options.random || (options.rng || _rng)();
+
+  // Per 4.4, set bits for version and `clock_seq_hi_and_reserved`
+  rnds[6] = (rnds[6] & 0x0f) | 0x40;
+  rnds[8] = (rnds[8] & 0x3f) | 0x80;
+
+  // Copy bytes to buffer, if provided
+  if (buf) {
+    for (var ii = 0; ii < 16; ii++) {
+      buf[i + ii] = rnds[ii];
+    }
+  }
+
+  return buf || unparse(rnds);
+}
+
+// Export public API
+var uuid = v4;
+uuid.v1 = v1;
+uuid.v4 = v4;
+uuid.parse = parse;
+uuid.unparse = unparse;
+
+module.exports = uuid;
+
+},{"./rng":2}]},{},[1]);

@@ -1,0 +1,37 @@
+<html>
+<body>
+
+<p>Rule base adapted from: http://www.csis.ysu.edu/~john/824/examples/EMH1.txt</p>
+
+<p>Open in debugger to see rule activity</p>
+
+<script src="../browser/rule-reactor.js"></script>
+<script id="example">
+var reactor = new RuleReactor();
+function retract() { reactor.retract.apply(reactor,arguments); }
+function assert() { reactor.assert.apply(reactor,arguments); }
+
+function Person(name) { this.name = name; }
+
+reactor.createRule("match",0,{person: Person},
+	function(person) {
+		return person.name!=null;
+	},
+	function(person) {
+		console.log(person);
+	});
+
+reactor.trace(3);
+
+var p = new Person("joe");
+reactor.assert(p);
+reactor.retract(p);
+
+
+
+</script>
+
+<script>
+document.write("<pre>" + document.getElementById("example").textContent + "</pre>"); 
+</script>
+</body></html>

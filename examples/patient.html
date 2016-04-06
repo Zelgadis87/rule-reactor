@@ -4,13 +4,13 @@
 <p>Rule base adapted from: http://www.csis.ysu.edu/~john/824/examples/EMH1.txt</p>
 
 <p>Open in debugger to see rule activity</p>
-<!--  script src="https://npmcdn.com/node-uuid@1.4.7/uuid.js"></script>
-<script src="../node_modules/paralleljs/lib/parallel.js"></script>
-<script src="../node_modules/webhamsters/src/hamsters.js"></script -->
-<script src="../index.js"></script>
+<script src="../browser/rule-reactor.js"></script>
 <script id="example">
-var not = RuleReactor.not;
-var insert = RuleReactor.insert;
+var reactor = new RuleReactor();
+
+function not() { return reactor.not.apply(reator,arguments); }
+
+reactor.trace(3);
 
 // define the business object model consisting of
 // Patient, Diagnosis, and Treatment. Diagnosis
@@ -35,7 +35,7 @@ function Treatment(name) {
 // it matches a Patient with specific values for fever, spots, and innoculated 
 // and we modify the matching Patient to have the diagnosis measles.
 
-RuleReactor.createRule("Measles",0,{p: Patient},
+reactor.createRule("Measles",0,{p: Patient},
 	function(p) {
 		return !p.diagnosis && p.fever=="high" && p.spots==true && p.innoculated==false;
 	},
@@ -45,7 +45,7 @@ RuleReactor.createRule("Measles",0,{p: Patient},
 
 // of course, there are lots of other things that could be wrong
 
-RuleReactor.createRule("Allergy1",0,{p: Patient},
+reactor.createRule("Allergy1",0,{p: Patient},
 	[function(p) {
 		return !p.diagnosis;
 	},
@@ -62,7 +62,7 @@ RuleReactor.createRule("Allergy1",0,{p: Patient},
 		p.diagnosis = new Diagnosis("allergy","Allergy diagnosed from presence of spots and no fever or is innoculated for measles.");
 	});
 
-RuleReactor.createRule("Allergy2",0,{p: Patient},
+reactor.createRule("Allergy2",0,{p: Patient},
 	function(p) {
 		return !p.diagnosis && p.rash==true;
 	},
@@ -70,7 +70,7 @@ RuleReactor.createRule("Allergy2",0,{p: Patient},
 		p.diagnosis = new Diagnosis("allergy","Allergy diagnosed from presence of rash.");
 	});
 
-RuleReactor.createRule("Flu",0,{p: Patient},
+reactor.createRule("Flu",0,{p: Patient},
 	function(p) {
 		return !p.diagnosis && p.soreThroat==true && (p.fever=="mild" || p.fever=="high");
 	},
@@ -80,7 +80,7 @@ RuleReactor.createRule("Flu",0,{p: Patient},
 
 // Rules for recommending treatments on the basis of Diagnosis
 
-RuleReactor.createRule("Penicillin",0,{d: Diagnosis,p: Patient},
+reactor.createRule("Penicillin",0,{d: Diagnosis,p: Patient},
 	function(d,p) {
 		return !p.treatment && d.name=="measles";
 	},
@@ -88,7 +88,7 @@ RuleReactor.createRule("Penicillin",0,{d: Diagnosis,p: Patient},
 		p.treatment = new Treatment("penicillin");
 	});
 
-RuleReactor.createRule("Allergy Pills",0,{d: Diagnosis,p: Patient},
+reactor.createRule("Allergy Pills",0,{d: Diagnosis,p: Patient},
 	function(d,p) {
 		return !p.treatment && d.name=="allergy";
 	},
@@ -96,7 +96,7 @@ RuleReactor.createRule("Allergy Pills",0,{d: Diagnosis,p: Patient},
 		p.treatment = new Treatment("allergy pills");
 	});
 	
-RuleReactor.createRule("Bed Rest",0,{d: Diagnosis,p: Patient},
+reactor.createRule("Bed Rest",0,{d: Diagnosis,p: Patient},
 	function(d,p) {
 		return !p.treatment && d.name=="flu";
 	},
@@ -105,20 +105,14 @@ RuleReactor.createRule("Bed Rest",0,{d: Diagnosis,p: Patient},
 	});
 
 
-// data matched by the rules is just JavaScript class instances inserted into the RuleReactor
-
-RuleReactor.trace(3);
-
 var p = new Patient();
 p.fever = "low";
 p.spots = true;
 p.rash = false;
 p.soreThroat = false;
 p.innoculated = false;
-//RuleReactor.insert(p);
-//RuleReactor.remove(p); // adding and removing is just to demonstrate rule activation and deactivation
-RuleReactor.insert(p);
-RuleReactor.run(Infinity,true,function() { 
+reactor.assert(p);
+reactor.run(Infinity,true,function() { 
 	console.log(JSON.stringify(p)); 
 });
 

@@ -20,15 +20,18 @@ There is an intro at: http://anywhichway.github.io/rule-reactor.html
 
 For this tutorial, we will use code from the patient.html example in the examples directory available on GitHub or via an installed npm package.
 
-There is only one object most developers will need to interact with, a unary object call RuleReactor.
+There is only one constructor most developers will need to interact with, RuleReactor.
 
 ```
 var RuleReactor = require("rule-reactor");
+var reactor = new RuleReactor();
+
 ```
 or
 
 ```
 <script src="rule-reactor.js"></script>
+<script>var reactor = new RuleReactor()</script>
 ```
 
 The first thing to do is decide which of your own classes are going to be accessed by rules and ensure they are defined before any referencing rules are defined.
@@ -42,7 +45,7 @@ No properties have to be defined on the class. If they are referenced by a rule 
 Now define rules. Below are two examples.
 
 ```
-RuleReactor.createRule("Measles",0,{p: Patient},
+reactor.createRule("Measles",0,{p: Patient},
 	function(p1) {
 		return p1.fever=="high" && p1.spots==true && p1.innoculated==false;
 	},
@@ -50,7 +53,7 @@ RuleReactor.createRule("Measles",0,{p: Patient},
 		p1.diagnosis = new Diagnosis("measles","High temp, spots, and no innoculation for measles.");
 	});
 	
-RuleReactor.createRule("Penicillin",0,{p: Patient, d: Diagnosis},
+reactor.createRule("Penicillin",0,{p: Patient, d: Diagnosis},
 	function(d) {
 		return d.name=="measles";
 	},
@@ -64,7 +67,8 @@ RuleReactor.createRule("Penicillin",0,{p: Patient, d: Diagnosis},
 * After the domain comes a condition or array of conditions. These are functions that return true or false. They
 should not produce any side effects because they will be called a lot and strange things might happen as a result. Note, it is generally better to use == rather than === in rules 
 because this allows objects to resolve using their valueOf() constructor. 
-* Finally, an action is specified. This can be a function that executes any normal JavaScript code. If an assignment of an object to a property on an object that already exists in the RuleReactor memory is made, the object will be automatically inserted. However, you can also create objects that do not end-up in RuleReactor memory, by just creating them and not assigning them to anything.
+* Finally, an action is specified. This can be a function that executes any normal JavaScript code. If an assignment of an object to a property on an object that already exists in the RuleReactor memory is made, the object will be automatically inserted. 
+* You can also create objects and insert them, using `reactor.insert(object)`. Or, you can create objects that do not end-up in RuleReactor memory, by just creating them and not inserting them or assigning them to anything.
 
 After the rules have been defined, an initial set of facts against which the rules will execute is normally created.
 
@@ -73,14 +77,14 @@ var p = new Patient();
 p.fever = "high";
 p.spots = true;
 p.innoculated = false;
-RuleReactor.insert(p);
+reactor.insert(p);
 ```
 
 All that is left to do is run the RuleReactor.
 
 ```
-RuleReactor.trace(0);
-RuleReactor.run(Infinity,true,function() { 
+reactor.trace(0);
+reactor.run(Infinity,true,function() { 
 	console.log(JSON.stringify(p)); 
 });
 ```
@@ -90,7 +94,81 @@ The first argument to run is the number of rules to execute before stopping. Unl
 {"diagnosis":{"name":"measles","reason":"High temp, spots, and no innoculation for measles."},"treatment":{"name":"penicillin"},"fever":"high","spots":true,"innoculated":false,"soreThroat":false}
 ```
 
-## Debugging
+## Advanced Use
+
+### Convenience Declarations
+
+To make your rules easier to read, you may wish to put these lines at the top of your rule files:
+
+```
+function assert() { return reactor.assert.apply(reactor,arguments); }
+function not() { return reactor.not.apply(reactor,arguments); }
+function exists() { return reactor.exists.apply(reactor,arguments); }
+function every() { return reactor.every.apply(reactor,arguments); }
+```
+
+### Existential Quantification
+
+Rules can check to see if a condition is true at least once across all possible combinations of a domain and fire just once rather than for each possible combination, e.g.
+
+```
+reactor.createRule("homeless",0,{},
+	function() {
+		return reactor.exists({person: Person},function(person) { return person.home==null; });
+	},
+	function() {
+		console.log("There are homeless people.");
+	});
+```
+Note that existential quantification required its own domain specification. Also note that the rule above is domainless. Domainless rules are re-tested after any other rule fires in case data has been changed that impacts the rule. This can be expensive. The similar rule could be written as:
+
+```
+reactor.createRule("homeless",0,{unused: Person},
+	function() {
+		return reactor.exists({person: Person},function(person) { return person.home==null; });
+	},
+	function() {
+		console.log("There are homeless people.");
+	});
+```
+
+This rule will be tested any time a new Person is added; however, if the command `delete person.home` or `person.home = null` is every executed the rule will not be processed, so it would not accomplish the desired result.
+
+We could also write a rule to ensure there are no homeless people:
+
+```
+function not() { return reactor.not.apply(reactor,arguments); }
+function exists() { return reactor.exists.apply(reactor,arguments); }
+
+reactor.createRule("exists1",0,{person: Person},
+	function(person) {
+		return not(exists({home: Home},function(home) { return home.owner === person; }));
+	},
+	function(person) {
+		person.home = new Home(person);
+	});
+```
+
+This rule is read as follows, "If there is a Person and it is not the case a home exists where that person is the owner, then create a new home."
+
+Note that the domain variable `person` cab be referenced inside the existential test as a result of using JavaScript's closure capability. Also note that existential quantification can be wrapped in `not` and we made the rule easier to read through the use of convenience function definitions beforehand.
+
+### Universal Quantification
+
+Universal quantification works the same way as existential quantification except it checks if a condition is always true across all possible combinations of a domain, e.g.
+
+```
+reactor.createRule("every",0,{},
+	function() {
+		return every({person: Person},function(person) { return person.home!==undefined; });
+	},
+	function() {
+		console.log("Everyone universaly has a home!");
+	});
+```
+
+
+## Debugging and Testing
 
 Just above the run command a few lines up, you can see a call to .trace. RuleReactor has 3 trace levels that print to the JavaScript console. A value of 0 turns tracing off.
 
@@ -101,7 +179,7 @@ Just above the run command a few lines up, you can see a call to .trace. RuleRea
 	* A rule is being activated when all it conditions have been met
 	* A rule is being de-activated when its conditions are no longer being met or immediately after executing its action
 3. Prints when:
-	* A new rule is being created on the fly
+	* A new rule is being created
 	* New data is being inserted into RuleReactor
 	* Data is being bound or unbound from rule. This immediately follows insert for all impacted rules.
 	* An object with an impact on a rule is being modified. 
@@ -110,10 +188,12 @@ Just above the run command a few lines up, you can see a call to .trace. RuleRea
 	
 But, most importantly you can set regular JavaScript break points in your rule conditions! If you have a complex condition, then break it into several functions while doing development.
 
+To assist in unit testing rules, RuleReactor keeps track of the maximum number of potential matches found for a rule as well as how many times it was test, activated, or fired. These statistics are printed to the console when the .run command completes if the trace level is set to 3.
+
 
 # Performance & Size
 
-Preliminary tests show performance close to that of Nools. However, the rule-reactor core is just 24K (11K minified) vs 577K (227K minified) for Nools. At runtime, rule-reactor will also consume far less memory than nools for its pattern and join processing.
+Preliminary tests show performance close to that of Nools. However, the rule-reactor core is just 41K (19K minified) vs 577K (227K minified) for Nools. At runtime, rule-reactor will also consume far less memory than nools for its pattern and join processing.
 
 # Building & Testing
 
@@ -123,15 +203,29 @@ For code quality assessment purposes, the cyclomatic complexity threshold is set
 
 # Notes
 
-This is the last ALPHA release. Watch for a BETA in the next two weeks once all unit tests have been implemented and code quality has been run through multiple Code Climate and Codacity passes.
+v0.0.14 This is the first BETA release. With the exception of potential additions, the calling interface is now stable.
 
 # Updates (reverse chronological order)
 
-Currently ALPHA
+Currently BETA
 
-2016-03-31 v0.0.13 Argh ... missed the GPL reference in this file, although we got it in the source. Now AGPL.
+2016-04-06   v0.0.14 
 
-2016-03-31 v0.0.12 Sorry for the version spam! Attorney said AGPL not GPL.
+* Changed .insert and .remove to .assert and .retract to be consistent with many other rule engines.
+* RuleReactor is no longer a singleton, an instance must be created with new RuleReactor(). This effectively provides support for multiple rule sets. 
+* Not only have unit tests been added, the RuleReactor itself has had testing capability
+added. See documentation section on Debugging and Testing. 
+* Modified the internal storage of data from an Array to a Map.
+* Added dependency on uuid package for generating internal object ids.
+* Added support for JavaScript primitive objects as part of rule domains, e.g. {num: Number}. 
+* Added rule validity checking, e.g. ensuring domains variables referenced by conditions are declared for the rule.
+* Added existential and universal quantification.
+* Corrected issue where rule activations were not being tracked properly when not created as a result of a specific instance.
+* Corrected issue where properties only referenced in rule actions were not being made reactive. This prevented proper existential and universal quantification behavior.
+
+2016-03-31 v0.0.13 No functional changes.
+
+2016-03-31 v0.0.12 No functional changes.
 
 2016-03-31 v0.0.11 Added documentation. Corrected nools performance statements (it is faster than was stated).
 
