@@ -317,7 +317,7 @@ var uuid = require("uuid");
 		});
 		rule.triggers.push({domain:rule.domain,range:rule.range});
 		rule.conditions.forEach(function(condition,cnum) {
-			(condition+"").replace(/exists\(\s*({.*}),(.*)\)/,
+			(condition+"").replace(/exists\(\s*({.*}),(.*)\)/g,
 				function(match,domainstr,conditionstr) {
 					var domain = new Function("return " + domainstr)(), variables = Object.keys(domain);
 					var quantification = {domain: domain, range: {}};
@@ -346,7 +346,7 @@ var uuid = require("uuid");
 					return match;
 				}
 			);
-			(condition+"").replace(/forAll\(\s*({.*}),(.*)\)/,
+			(condition+"").replace(/forAll\(\s*({.*}),(.*)\)/g,
 					function(match,domainstr,conditionstr) {
 						var domain = new Function("return " + domainstr)(), variables = Object.keys(domain);
 						var quantification = {domain: domain, range: {}};
