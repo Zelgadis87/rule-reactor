@@ -1025,7 +1025,7 @@ var uuid = require("uuid");
 				// restore instance properties
 				Object.keys(instance).forEach(function(key) {
 					var desc = Object.getOwnPropertyDescriptor(instance,key);
-					if(desc.get.name==="rrget") {
+					if(desc.get && desc.get.name==="rrget") {
 						if(typeof(desc.get.originalDescriptor)==="undefined") {
 							delete instance[key];
 						} else {
