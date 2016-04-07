@@ -304,20 +304,74 @@ var uuid = require("uuid");
 				(condition+"").replace(new RegExp("(\\b"+variable+"\\.\\w+\\b)","g"),
 					function(match) { 
 						var parts = match.split("."),key = parts[1];
-						// cache reactive keys on class prototype
-						cons.prototype.activeKeys[key] = true;
-						// cache what keys are associated with what variables
-						rule.range[variable][key] = (rule.range[variable][key] ? rule.range[variable][key] : true);
+						// cache reactive non-function keys on class prototype
+						if(key.indexOf("(")===-1) {
+							cons.prototype.activeKeys[key] = true;
+							// cache what keys are associated with what variables
+							rule.range[variable][key] = true;
+						}
 						// don't really do a replacement!
 						return match;
 					}
 				);
-			});
-			(rule.action+"").replace(new RegExp("(\\b"+variable+"\\.\\w+\\b)","g"),
-					function(match) { 
-						var parts = match.split("."),key = parts[1];
-						// cache reactive keys on class prototype
-						cons.prototype.activeKeys[key] = true;
+			})
+		});
+		rule.triggers.push({domain:rule.domain,range:rule.range});
+		rule.conditions.forEach(function(condition,cnum) {
+			(condition+"").replace(/exists\(\s*({.*}),(.*)\)/,
+				function(match,domainstr,conditionstr) {
+					var domain = new Function("return " + domainstr)(), variables = Object.keys(domain);
+					var quantification = {domain: domain, range: {}};
+					rule.triggers.push(quantification);
+					variables.forEach(function(variable) {
+						var cons = domain[variable];
+						quantification.range[variable] = (quantification.range[variable] ? quantification.range[variable] : {});
+						cons.prototype.rules = (cons.prototype.rules ? cons.prototype.rules : {});
+						cons.prototype.rules[rule.name] = rule;
+						cons.prototype.activeKeys = (cons.prototype.activeKeys ? cons.prototype.activeKeys : {});
+						conditionstr.replace(new RegExp("(\\b"+variable+"\\.\\w+\\b)","g"),
+							function(match) { 
+								var parts = match.split("."),key = parts[1];
+								// cache reactive non-function keys on class prototype
+								if(key.indexOf("(")===-1) {
+									cons.prototype.activeKeys[key] = true;
+									// cache what keys are associated with what variables
+									quantification.range[variable][key] = true;
+								}
+								// don't really do a replacement!
+								return match;
+							}
+						);
+					});
+					// don't really do a replacement!
+					return match;
+				}
+			);
+			(condition+"").replace(/forAll\(\s*({.*}),(.*)\)/,
+					function(match,domainstr,conditionstr) {
+						var domain = new Function("return " + domainstr)(), variables = Object.keys(domain);
+						var quantification = {domain: domain, range: {}};
+						rule.triggers.push(quantification);
+						variables.forEach(function(variable) {
+							var cons = domain[variable];
+							quantification.range[variable] = (quantification.range[variable] ? quantification.range[variable] : {});
+							cons.prototype.rules = (cons.prototype.rules ? cons.prototype.rules : {});
+							cons.prototype.rules[rule.name] = rule;
+							cons.prototype.activeKeys = (cons.prototype.activeKeys ? cons.prototype.activeKeys : {});
+							conditionstr.replace(new RegExp("(\\b"+variable+"\\.\\w+\\b)","g"),
+								function(match) { 
+									var parts = match.split("."),key = parts[1];
+									// cache reactive non-function keys on class prototype
+									if(key.indexOf("(")===-1) {
+										cons.prototype.activeKeys[key] = true;
+										// cache what keys are associated with what variables
+										quantification.range[variable][key] = true;
+									}
+									// don't really do a replacement!
+									return match;
+								}
+							);
+						});
 						// don't really do a replacement!
 						return match;
 					}
@@ -458,6 +512,7 @@ var uuid = require("uuid");
 			throw new TypeError("Domain " + domain + " is not an object in rule " + name);
 		}
 		me.range = {};
+		me.triggers = [];
 		me.conditions = (Array.isArray(condition) || condition instanceof Array ? condition : [condition]);
 		me.pattern = new Array(Object.keys(domain).length);
 		if(typeof(action)!=="function") {
@@ -707,7 +762,7 @@ var uuid = require("uuid");
 	}
 	function RuleReactor () {
 		this.rules = {};
-		this.domainlessRules = {};
+		this.triggerlessRules = {};
 		this.data = new Map();
 		this.agenda = [];
 	}
@@ -744,7 +799,7 @@ var uuid = require("uuid");
 						}
 					});
 				}
-				keys.forEach(function(key) {
+				Object.keys(instance.activeKeys).forEach(function(key) {
 					function rrget() {
 						return rrget.value;
 					}
@@ -765,9 +820,10 @@ var uuid = require("uuid");
 							// re-test the rules that pattern match the key
 							Object.keys(instance.rules).forEach(function(rulename) {
 								var rule = instance.rules[rulename];
-								if(Object.keys(rule.range).some(function(variable) {
-									return rule.range[variable][key] && instance instanceof rule.domain[variable];
-								})) {
+								if(rule.triggers.some(function(trigger) {
+									return Object.keys(trigger.range).some(function(variable) {
+										return trigger.range[variable][key] && instance instanceof trigger.domain[variable];
+								})})) {
 									var activations = rule.activations.get(instance);
 									if(activations) {
 										activations.forEach(function(activation) {
@@ -807,9 +863,10 @@ var uuid = require("uuid");
 										// re-test the rules that pattern match the key
 										Object.keys(instance.rules).forEach(function(rulename) {
 											var rule = instance.rules[rulename];
-											if(Object.keys(rule.range).some(function(variable) {
-												return rule.range[variable][key] && instance instanceof rule.domain[variable];
-											})) {
+											if(rule.triggers.some(function(trigger) {
+												return Object.keys(trigger.range).some(function(variable) {
+													return trigger.range[variable][key] && instance instanceof trigger.domain[variable];
+											})})) {
 												var activations = rule.activations.get(instance);
 												if(activations) {
 													activations.forEach(function(activation) {
@@ -870,12 +927,12 @@ var uuid = require("uuid");
 	RuleReactor.prototype.createRule = function(name,salience,domain,condition,action) {
 		var me = this, rule = new Rule(this,name,salience,domain,condition,action);
 		me.rules[rule.name] = rule;
-		if(Object.keys(domain).length===0) {
-			me.domainlessRules[rule.name] = rule;
+		if(rule.triggers.length===0) {
+			me.triggerlessRules[rule.name] = rule;
 		}
 		return rule;
 	}
-	RuleReactor.prototype.every = function(domain,test) {
+	RuleReactor.prototype.forAll = function(domain,test) {
 		if(typeof(domain)!=="object") {
 			throw new TypeError("Domain " + domain + " is not an object in universal quantification");
 		}
@@ -1018,8 +1075,8 @@ var uuid = require("uuid");
 				me.agenda[me.agenda.length-1].execute(me.agenda.length-1);
 				if(me.dataModified===true) {
 					// causes a loop, put in assert? .. but then doe snot run
-					Object.keys(me.domainlessRules).forEach(function(rulename) {
-						me.domainlessRules[rulename].test();
+					Object.keys(me.triggerlessRules).forEach(function(rulename) {
+						me.triggerlessRules[rulename].test();
 					});
 				}
 				if(loose) {

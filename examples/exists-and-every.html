@@ -11,7 +11,7 @@ var reactor = new RuleReactor();
 function not() { return reactor.not.apply(reactor,arguments); }
 function assert() { return reactor.assert.apply(reactor,arguments); }
 function exists() { return reactor.exists.apply(reactor,arguments); }
-function every() { return reactor.every.apply(reactor,arguments); }
+function forAll() { return reactor.forAll.apply(reactor,arguments); }
 
 function Person(name) { this.name = name; }
 function Home(owner) { 
@@ -34,12 +34,12 @@ reactor.createRule("new home",1,{home: Home},
 	});
 reactor.createRule("every",0,{},
 	function() {
-		return every({person: Person},function(person) { return person.home!==undefined; });
+		return forAll({person: Person},function(person) { return person.home!==undefined; });
 	},
 	function() {
 		console.log("Everyone universaly has a home!");
 	});
-reactor.createRule("exists2",0,{h: Home, p: Person},
+reactor.createRule("exists2",0,{h: Home},
 	function(h) {
 		return exists({p: Person},{p: {home: h}});
 	},

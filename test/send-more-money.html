@@ -3,15 +3,14 @@
 <p>Open in debugger to see results.</p>
 <p>
 Send More Money tests a rule engine's ability to handle large numbers of possible combinations of values (i.e. 10^8 combinations, 100,000,000) to solve a crypto-mathematical problem. 
-Nools takes approximately 1.5 minutes in Firefox on an Intel i7-4510U 2.00GHz with 8GB RAM and Windows 10 Pro 64. Under the same configuration, reactor will solve the problem in 
+Nools takes approximately 1.5 minutes in Firefox on an Intel i7-4510U 2.00GHz with 8GB RAM and Windows 10 Pro 64. Under the same configuration, RuleReactor will solve the problem in 
 approximately 2 minutes. We think this is pretty good for directly coded JavaScript rules that can be handled in the regular debugger and an engine that is only 24K (11K minified) 
 vs 577K (227K minified) for Nools (granted Nools does have some additional features).
 
-The solution takes approximately 5 minutes in Goggle Chrome. It takes substantially longer in Microsoft Edge.
+The solution takes approximately 3 minutes in Goggle Chrome. It takes substantially longer in Microsoft Edge.
 
 Your browser will probably appear to hang while running this example. We are working to resolve this. For now, be patient.
 
-Note: In Chrome and Edge, Send More Money takes considerably longer.
 </p>
 <script src="../browser/rule-reactor.js"></script>
 <script id="example">
@@ -19,10 +18,6 @@ var reactor = new RuleReactor();
 function not() { return reactor.not.apply(reactor,arguments); }
 function assert() { return reactor.assert.apply(reactor,arguments); }
 
-function Number(number) {
-	this.number = number;
-}
-Number.prototype.valueOf = function() { return this.number; };
 /*
 var send = reactor.createRule("send more money",0,{s: Number,e: Number,n: Number,d: Number,m: Number,o: Number,r: Number,y: Number},
 	[function(s) {
@@ -72,13 +67,12 @@ var send = reactor.createRule("send more money",0,{s: Number,e: Number,n: Number
 		console.log(s.valueOf(),e.valueOf(),n.valueOf(),d.valueOf()," + ",m.valueOf(),o.valueOf(),r.valueOf(),e.valueOf()," = ",m.valueOf(),o.valueOf(),n.valueOf(),e.valueOf(),y.valueOf());
 		console.log("send + more = money");
 	});
-
-//send.setOptions({optimize:"heap"});
+	
 
 console.log(new Date());
 reactor.trace(2);
 reactor.assert([new Number(0),new Number(1),new Number(2),new Number(3),new Number(4),new Number(5),new Number(6),new Number(7),new Number(8),new Number(9)],function() { 
-	reactor.run(Infinity,true);
+	reactor.run(Infinity,false);
 });
 
 /*

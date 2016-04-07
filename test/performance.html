@@ -45,7 +45,7 @@ reactor.createRule("pair",0,{p: Phase, d1: TestData, d2: TestData},
 reactor.trace(0);
 var phase = new Phase();
 assert([new Counter(), new TestData(),phase]);
-reactor.run(Infinity,false,function() {
+reactor.run(Infinity,true,function() {
 	console.log("Performance during addition and heavy join");
 	console.log("Data Count: ",reactor.data.size);
 	console.log("Executions: ",reactor.run.executions);
