@@ -431,7 +431,7 @@ var uuid = require("uuid");
 	Console.log = function() { 
 		console.log.apply(console,arguments); 
 	};
-	// uncomment line below to retract logging
+	// uncomment line below to stop logging
 	//Console.log = function() {};
 
 	function Activation(rule,match,index,bindings,instance) {
@@ -532,7 +532,7 @@ var uuid = require("uuid");
 	Rule.prototype.bind = function(instance,test) {
 		var me = this, variables = Object.keys(me.bindings), values = [];
 		variables.map(function(variable) {
-			if(instance instanceof me.domain[variable] && me.bindings[variable].indexOf(instance.__rrid__)===-1) {
+			if(instance instanceof me.domain[variable] && me.bindings[variable].indexOf(instance)===-1) {
 				if(me.reactor.tracelevel>2) {
 					Console.log("Binding: ",me,variable,instance);
 				}
@@ -642,16 +642,17 @@ var uuid = require("uuid");
 	Rule.prototype.unbind = function(instance) {
 		var me = this, variables = Object.keys(me.bindings);
 		variables.map(function(variable) {
-			var i = me.bindings[variable].indexOf(instance);
-			if(i>=0) {
-				if(me.reactor.tracelevel>2) {
-					Console.log("Unbinding: ",me,variable,instance);
-				}
-				me.bindings[variable].splice(i,1);
-				if(me.bindings[variable].length===0) {
-					me.cxproduct = null;
-					me.reset(false);
-				} else {
+			if(instance instanceof me.domain[variable]) {
+				var i = me.bindings[variable].indexOf(instance);
+				if(i>=0) {
+					if(me.reactor.tracelevel>2) {
+						Console.log("Unbinding: ",me,variable,instance);
+					}
+					me.bindings[variable].splice(i,1);
+					if(me.bindings[variable].length===0) {
+						me.cxproduct = null;
+						//me.reset(false);
+					}
 					me.reset(false,instance);
 				}
 			}
@@ -721,6 +722,7 @@ var uuid = require("uuid");
 		}
 	}
 	function matchObject(index,instance,parentkeys,parentinstances) {
+		if(!index) { return false; }
 		var parentkeys = (parentkeys ? parentkeys : []), 
 			parentinstances = (parentinstances ? parentinstances : []),
 			keys = Object.keys(instance);
