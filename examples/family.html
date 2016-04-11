@@ -5,9 +5,10 @@
 <script src="../browser/rule-reactor.js"></script>
 <script id="example">
 
-var reactor = new RuleReactor();
+var reactor = new RuleReactor(true);
 function not() { return reactor.not.apply(reactor,arguments); }
-
+function exists() { return reactor.exists.apply(reactor,arguments); }
+function forAll() { return reactor.forAll.apply(reactor,arguments); }
 
 function Person(name) {
 	this.name = name;
@@ -42,14 +43,14 @@ reactor.createRule("parent-child-remove",1,{p1: Person,p2: Person},
 // trivial rules for testing
 reactor.createRule("some-named",1,{p1: Person},
 	function(p1) {
-		return Person.exists(function(person) { person.name==p1.name; });
+		return exists({person: Person},function(person) { return person.name==p1.name; });
 	},
 	function(p1) {
 		console.log("some named the same",p1);
 	});
 reactor.createRule("every-named",1,{p1: Person},
 	function(p1) {
-		return not(Person.forall(function(person) { person.name==p1.name; }));
+		return not(forAll({person: Person},function(person) { return person.name==p1.name; }));
 	},
 	function(p1) {
 		console.log("not every named the same",p1);

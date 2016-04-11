@@ -16,6 +16,7 @@ reactor.createRule("match",0,{number: Number},
 	},
 	function(number) {
 		console.log(number);
+		reactor.stop();
 	});
 
 reactor.trace(3);

@@ -46,7 +46,7 @@ describe('reactor ', function() {
 		reactor.assert(to);
 		var rule = reactor.createRule("test",0,{},
 				function() {
-					return reactor.exists({to: Number},function(to) { return to==1; });
+					return RuleReactor.exists({to: Number},function(to) { return to==1; });
 				},
 				function() {
 					;
@@ -62,7 +62,7 @@ describe('reactor ', function() {
 		reactor.assert(to);
 		var rule = reactor.createRule("test",0,{},
 				function() {
-					return reactor.forAll({to: Number},function(to) { return to==1; });
+					return RuleReactor.forAll({to: Number},function(to) { return to==1; });
 				},
 				function() {
 					;
@@ -78,7 +78,7 @@ describe('reactor ', function() {
 		reactor.assert(to);
 		var rule = reactor.createRule("test",0,{},
 				function() {
-					return reactor.not(reactor.forAll({to: Number},function(to) { return to==2; }));
+					return RuleReactor.not(RuleReactor.forAll({to: Number},function(to) { return to==2; }));
 				},
 				function() {
 					;

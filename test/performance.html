@@ -4,7 +4,7 @@
 
 <script src="../browser/rule-reactor.js"></script>
 <script id="example">
-var reactor = new RuleReactor();
+var reactor = new RuleReactor(true);
 function not() { return reactor.not.apply(reactor,arguments); }
 function assert() { return reactor.assert.apply(reactor,arguments); }
 
@@ -39,6 +39,13 @@ reactor.createRule("pair",0,{p: Phase, d1: TestData, d2: TestData},
 	},
 	function(d1,d2) {
 		new Pair(d2,d1);
+	});
+reactor.createRule("stop",-1,{},
+	function() {
+		return true;
+	},
+	function() {
+		reactor.stop();
 	});
 
 		

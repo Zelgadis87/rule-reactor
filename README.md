@@ -4,7 +4,7 @@ A light weight, fast, expressive forward chaining business rule engine leveragin
 
 All rule conditions and actions are expressed as regular JavaScript functions so a JavaScript debugger can be fully utilized for debugging RuleReactor applications.
 
-At 24K (11K minified) vs 577K (227K minified) for Nools, a comparable speed for most applications, plus a low memory impact pattern and join processor, rule-reactor is perfect for memory constrained apps like those on mobile devices.
+At 24K (11K minified) vs 577K (227K minified) for Nools, a comparable speed for many applications, plus a low memory impact pattern and join processor, rule-reactor is perfect for memory constrained apps like those on mobile devices.
 
 # Install
 
@@ -35,6 +35,8 @@ or
 <script src="rule-reactor.js"></script>
 <script>var reactor = new RuleReactor()</script>
 ```
+
+RuleReactor takes an optional boolean argument. If set to `true`, then an extra compile step is taken when creating rules. This can boost performance by up to 25%; however, breakpoints set in rule conditions, will no longer work. So, this should be a final step in development.
 
 The first thing to do is decide which of your own classes are going to be accessed by rules and ensure they are defined before any referencing rules are created.
 
@@ -99,6 +101,18 @@ The first argument to run is the number of rules to execute before stopping. Unl
 
 The second argument tells the RuleReactor to run just one rule every time slice to allow the JavaScript engine to handle other requests. By default, this is false since it can have a substantial impact on RuleReactor performance. However, if you have a set of rules that take more than a second to process in production, you should set it to true.
 
+If you start a RuleReactor with Infinity, then to stop running, you need to call stop. A simple way to do this is to have a low salience rule with no conditions, e.g.
+
+```
+reactor.createRule("stop",-100,{},
+	function() {
+		return true;
+	},
+	function() {
+		reactor.stop();
+	});
+```
+
 ## Advanced Use
 
 ### Primitives
@@ -151,6 +165,39 @@ This rule is read as follows, "If there is a Person and it is not the case a hom
 
 Note that the domain variable `person` cab be referenced inside the existential test as a result of using JavaScript's closure capability. Also note that existential quantification can be wrapped in `not` and we made the rule easier to read through the use of convenience function definitions beforehand.
 
+### Existential Quantification With Indexed Patterns
+
+If you are conducting existential quantification over a potentially large volume of instances, you may wish to use a pattern rather than a function. RuleReactor indexes all properties on all objects that are asserted. The index is attached to the constructor for the instance and can be matched against using a JSON pattern. The below two tests drawn from the exists-and-forAll example are semantically identical:
+
+```
+// this rule matches against an index
+reactor.createRule("exists2",0,{h: Home},
+	function(h) {
+		return exists({p: Person},{p: {home: h}});
+	},
+	function(h) {
+		console.log(h," is assigned to a person.");
+	});
+```
+
+```
+// this rule loops across all Person's
+reactor.createRule("exists2",0,{h: Home},
+	function(h) {
+		return exists({p: Person},function(p) { return p.home==h; });
+	},
+	function(h) {
+		console.log(h," is assigned to a person.");
+	});
+```
+
+It is possible to pattern match across multiple class types. The below would test to see if there is a Person without a home and a Home without and owner.
+
+```
+exists({p: Person,h: Home},{p: {home: null},h: {owner: null}});
+```
+
+
 ### Universal Quantification
 
 Universal quantification works the same way as existential quantification except it checks if a condition is always true across all possible combinations of a domain, e.g.
@@ -167,7 +214,7 @@ reactor.createRule("every",0,{},
 
 ### Triggerless Rules
 
-If you want to have a rule that is evaluated any time some other rule fires and modifies something, then just make the rule have no domain and no existential or universal qunatification, e.g.
+If you want to have a rule that is evaluated every rule processing cycle, then just make the rule have no domain and no existential or universal quantification, e.g.
 
 ```
 reactor.createRule("execute after changes",0,{},
@@ -206,7 +253,8 @@ To assist in unit testing rules, RuleReactor keeps track of the maximum number o
 
 # Performance & Size
 
-Preliminary tests show performance close to that of Nools. However, the rule-reactor core is just 41K (19K minified) vs 577K (227K minified) for Nools. At runtime, rule-reactor will also consume far less memory than nools for its pattern and join processing.
+Preliminary tests show performance close to that of Nools. However, the rule-reactor core is just 41K (19K minified) vs 577K (227K minified) for Nools. At runtime, rule-reactor will also consume many megabytes less memory than nools for its pattern and join processing.
+
 
 # Building & Testing
 
@@ -216,13 +264,22 @@ For code quality assessment purposes, the cyclomatic complexity threshold is set
 
 # Notes
 
-v0.0.14 This is the first BETA release. With the exception of potential additions, the calling interface is now stable.
+v0.0.15 There seem to be some cases where existential patterns are not behaving the same way as equivalent test functions.
 
 # Updates (reverse chronological order)
 
 Currently BETA
 
-2016-04-06   v0.0.14 
+2016-04-11	 v0.0.15
+
+* Fixed issue where binding test was looking for instance id rather than instance. Could have resulted in duplicate instances in bindings.
+* Documented existential pattern matching.
+* Added Miss Manners example.
+* exists-and-every.html example renamed to exists-and-forAll.html.
+* Improved performance by approximately 25% by adding a rule condition compilation functionality. This can be turned on using an optional boolean argument when instantiating a RuleReactor.
+* when run is called with Infinity, stop() must now be explicitly called to stop running.
+
+2016-04-06	 v0.0.14 
 
 * Changed .insert and .remove to .assert and .retract to be consistent with many other rule engines.
 * RuleReactor is no longer a singleton, an instance must be created with new RuleReactor(). This effectively provides support for multiple rule sets. 

@@ -20,9 +20,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 var uuid = require("uuid");
+//var hamsters = require("webhamsters/src/hamsters");
+//var Parallel = require("paralleljs");
+
 (function() {
 	"use strict";
-
+	
 	function intersection(array) {
 		var arrays = arguments.length;
 		// fast path when we have nothing to intersect
@@ -80,9 +83,8 @@ var uuid = require("uuid");
 	
 //	portions from http://phrogz.net/lazy-cartesian-product
 	function CXProduct(collections){
-		this.deleted = {};
 		this.collections = (collections ? collections : []);
-		Object.defineProperty(this,"length",{set:function() {},get:function() { var size = 1; this.collections.forEach(function(collection) { size *= collection.length; }); return size; }});
+		Object.defineProperty(this,"length",{set:function() {},get:function() { if(this.collections.length===0) return 0; var size = 1; this.collections.forEach(function(collection) { size *= collection.length; }); return size; }});
 		Object.defineProperty(this,"size",{set:function() {},get:function() { return this.length; }});
 	}
 	CXProduct.prototype.add = function(collections) {
@@ -102,13 +104,11 @@ var uuid = require("uuid");
 	CXProduct.prototype.every = function(callback,pattern,test) {
 		var me = this, i = 0;
 		do {
-			if(!me.deleted[i]) {
-				var value = me.get(i);
-				if(value!==undefined) {
-					if((!test || test(value)) && (!pattern || testpattern(pattern,value)) && !callback(value)) {
-						return false;
-					};
-				}
+			var value = me.get(i);
+			if(value!==undefined) {
+				if((!test || test(value)) && (!pattern || testpattern(pattern,value)) && !callback(value)) {
+					return false;
+				};
 			}
 			i++;
 		} while(value!==undefined); 
@@ -129,6 +129,17 @@ var uuid = require("uuid");
 		})) {
 			return c.slice(0);
 		}
+	}
+	CXProduct.prototype.has = function(pattern,test) {
+		var me = this, hasundefined = false;
+		return pattern.every(function(value,i) {
+			if(value===undefined) {
+				hasundefined=true;
+			}
+			if(value===undefined || me.collections[i].indexOf(value)>=-1) {
+				return true;
+			}
+		}) && (!test || test(pattern)) && (hasundefined || me.indexOf(pattern)>=0);
 	}
 	CXProduct.prototype.indexOf = function(row) {
 		var me = this, index = 0;
@@ -162,15 +173,13 @@ var uuid = require("uuid");
 		return this;
 	}
 	CXProduct.prototype.some = function(callback,pattern,test) {
-		var me = this, i = 0;
+		var me = this, i = 0, value;
 		do {
-			if(!me.deleted[i]) {
-				var value = me.get(i);
-				if(value!==undefined) {
-					if((!test || test(value)) && (!pattern || testpattern(pattern,value)) && callback(value)) {
-						return true;
-					};
-				}
+			value = me.get(i);
+			if(value!==undefined) {
+				if((!test || test(value)) && (!pattern || testpattern(pattern,value)) && callback(value)) {
+					return true;
+				};
 			}
 			i++;
 		} while(value!==undefined); 
@@ -181,9 +190,9 @@ var uuid = require("uuid");
 		var match = me.get(i);
 		return match && match.every(function(element,i) { return element===row[i]; });
 	}
-	function dive(d,counter,collections,lens,p,callback,pattern,test){
-		var a=collections[d], max=collections.length-1,len=lens[d];
-		if (d==max) {
+	function dive(cxproduct,d,counter,collections,lens,p,callback,pattern,test){
+		var a=collections[d], max=collections.length-1,len=lens[d],results=[],params;
+		if (d===max) {
 			for (var i=0;i<len;++i) { 
 				p[d]=a[i]; 
 				if(!test || test(p)) {
@@ -193,30 +202,17 @@ var uuid = require("uuid");
 			}
 		} else {
 			for (var i=0;i<len;++i) {
-				p[d]=a[i]; 
-				dive(d+1,counter,collections,lens,p,callback,pattern,test);
+				p[d]=a[i];
+				dive(cxproduct,d+1,counter,collections,lens,p,callback,pattern,test);
 			}
 		}
 		p.pop();
 	}
-	CXProduct.prototype.forEach1 = function(callback,pattern,test) {
-		var me = this, p=[],lens=[];
+	CXProduct.prototype.forEach = function(callback,pattern,test) {
+		var me = this, p=[],lens=[], thetest = test, counter = {count:0};
 		for (var i=me.collections.length;i--;) lens[i]=me.collections[i].length;
-		dive(0,{count:0},me.collections,lens,p,callback,pattern,test);
+		dive(me,0,counter,me.collections,lens,p,callback,pattern,thetest);
 	}
-	CXProduct.prototype.forEach2 = function(callback,pattern,test) {
-		var me = this, i = 0;
-		do {
-			if(!me.deleted[i]) {
-				var value = me.get(i);
-				if(value!==undefined) {
-					callback(value);
-				}
-			}
-			i++;
-		} while(value!==undefined);
-	}
-	CXProduct.prototype.forEach = CXProduct.prototype.forEach1;
 	
 	function getFunctionArgs(f) {
 		var str = f+"";
@@ -274,7 +270,7 @@ var uuid = require("uuid");
 		}
 		Object.defineProperty(constructor.prototype,key,{enumerable:true,configurable:true,get:propertyGenerator,set:propertyGenerator});
 	}
-	function compile(rule) {
+	function compile(rule,boost) {
 		var me = this, variables = Object.keys(rule.domain);
 		variables.forEach(function(variable) {
 			var cons = rule.domain[variable];
@@ -316,9 +312,11 @@ var uuid = require("uuid");
 				);
 			})
 		});
-		rule.triggers.push({domain:rule.domain,range:rule.range});
+		if(variables.length>0) {
+			rule.triggers.push({domain:rule.domain,range:rule.range});
+		}
 		rule.conditions.forEach(function(condition,cnum) {
-			(condition+"").replace(/exists\(\s*({.*}),(.*)\)/,
+			(condition+"").replace(/exists\(\s*(\s*{.*\s*})\s*,\s*(.*)\s*\)/g,
 				function(match,domainstr,conditionstr) {
 					var domain = new Function("return " + domainstr)(), variables = Object.keys(domain);
 					var quantification = {domain: domain, range: {}};
@@ -347,7 +345,7 @@ var uuid = require("uuid");
 					return match;
 				}
 			);
-			(condition+"").replace(/forAll\(\s*({.*}),(.*)\)/,
+			(condition+"").replace(/forAll\(\s*(\s*{.*\s*})\s*,\s*(.*)\s*\)/g,
 					function(match,domainstr,conditionstr) {
 						var domain = new Function("return " + domainstr)(), variables = Object.keys(domain);
 						var quantification = {domain: domain, range: {}};
@@ -391,18 +389,24 @@ var uuid = require("uuid");
 				}
 				condition.required[j] = required;
 			});
-			rule.compiledConditions.push(function(match) {
-				var me = this, args = [];
-				// no required = domainless
-				if(!condition.required || condition.required.every(function(i) {
-					if(match[i]!==undefined) {
-						return args.push(match[i]);
+			if(!boost) {
+				rule.compiledConditions.push(function(match) {
+					var me = this, args = [];
+					// no required = domainless
+					if(!condition.required || condition.required.every(function(i) {
+						if(match[i]!==undefined) {
+							return args.push(match[i]);
+						}
+					})) {
+						return condition.apply(me,args);
 					}
-				})) {
-					return condition.apply(me,args);
-				}
-				return true;
-			});
+					return true;
+				});
+			} else {
+				var required = (condition.required ? condition.required : []);
+				var f = new Function("match","var args = [];if(" + JSON.stringify(required) + ".every(function(i,j,required){if(match[i]!==undefined){return args.push(match[i]);}})) {return (" + condition + ").apply(undefined,args);}");
+				rule.compiledConditions.push(f);
+			}
 		});
 		var args = getFunctionArgs(rule.action);
 		rule.action.required = new Array(args.length);
@@ -414,6 +418,7 @@ var uuid = require("uuid");
 			rule.action.required[i] = required;
 			
 		});
+		// do not add full compilation since actions are allowed to use closure scope and it will break that
 		rule.compiledAction = function(match) {
 			var me = this, args = [];
 			// no required = domainless
@@ -432,7 +437,7 @@ var uuid = require("uuid");
 	Console.log = function() { 
 		console.log.apply(console,arguments); 
 	};
-	// uncomment line below to retract logging
+	// uncomment line below to stop logging
 	//Console.log = function() {};
 
 	function Activation(rule,match,index,bindings,instance) {
@@ -499,8 +504,9 @@ var uuid = require("uuid");
 		}
 	}
 
-	function Rule(reactor,name,salience,domain,condition,action) {
+	function Rule(reactor,name,salience,domain,condition,action,boost) {
 		var me = this;
+		me.boost = boost;
 		me.name = name;
 		me.reactor = reactor;
 		if(typeof(salience)!=="number") {
@@ -525,7 +531,7 @@ var uuid = require("uuid");
 		me.tested = 0;
 		me.activated = 0;
 		me.fired = 0;
-		compile.call(reactor,this);
+		compile.call(reactor,this,me.boost);
 		if(me.reactor.tracelevel>2) {
 			Console.log("New Rule: ",this);
 		}
@@ -533,7 +539,7 @@ var uuid = require("uuid");
 	Rule.prototype.bind = function(instance,test) {
 		var me = this, variables = Object.keys(me.bindings), values = [];
 		variables.map(function(variable) {
-			if(instance instanceof me.domain[variable] && me.bindings[variable].indexOf(instance.__rrid__)===-1) {
+			if(instance instanceof me.domain[variable] && me.bindings[variable].indexOf(instance)===-1) {
 				if(me.reactor.tracelevel>2) {
 					Console.log("Binding: ",me,variable,instance);
 				}
@@ -545,7 +551,7 @@ var uuid = require("uuid");
 			return me.bindings[variable].length>0;
 		})) {
 			if(!me.cxproduct) {
-				me.cxproduct = new CXProduct().add(values);
+				me.cxproduct = new CXProduct(values);
 			}
 			if(test) {
 				me.test(instance);
@@ -565,6 +571,7 @@ var uuid = require("uuid");
 			Console.log("Firing: ",this,match);
 		}
 		this.fired++;
+		this.reactor.run.executions++;
 		this.compiledAction(match);
 	}
 	Rule.prototype.test = function(instance,key,callback) { 
@@ -579,38 +586,39 @@ var uuid = require("uuid");
 			Console.log("Testing: ",me,instance,key);
 		}
 		me.tested++;
-		var test = function(match) {
+		var test = function (match) {
 			return me.compiledConditions.every(function(condition) {
 				return condition.call(me,match);
 			});
 		}
-		if(me.cxproduct) {
-			me.potentialMatches = Math.max(me.potentialMatches,me.cxproduct.size);
-		}
-		if(instance) {
-			variables.forEach(function(variable,i) {
-				var collections = me.cxproduct.collections.slice(0);
-				if(instance instanceof me.domain[variable]) {
-					collections[i] = [instance];
-					var cxproduct = new CXProduct(collections);
-					cxproduct.forEach(function(match,i) {
-						new Activation(me,match,i,cxproduct,instance);
-						result = true;
-					},undefined,test); //me.conditions);
-				}
-			});
-		} else if(me.cxproduct) {
-			me.cxproduct.forEach(function(match,i) {
-				new Activation(me,match,i,me.cxproduct);
-				result = true;
-			},undefined,test); //me.conditions);
-		} else {
-			// tests domainless rules
+		if(variables.length===0) {
 			if(test()) {
-				new Activation(me);
+				new Activation(me,undefined,undefined,undefined,instance);
 				result = true;
 			} else {
 				me.reset(instance);
+			}
+		} else {
+			if(me.cxproduct) {
+				me.potentialMatches = Math.max(me.potentialMatches,me.cxproduct.size);
+			}
+			if(instance) {
+				variables.forEach(function(variable,i) {
+					var collections = me.cxproduct.collections.slice(0);
+					if(instance instanceof me.domain[variable]) {
+						collections[i] = [instance];
+						var cxproduct = new CXProduct(collections);
+						cxproduct.forEach(function(match,i) {
+							new Activation(me,match,i,cxproduct,instance);
+							result = true;
+						},undefined,test); //me.conditions);
+					}
+				});
+			} else if(me.cxproduct) {
+				me.cxproduct.forEach(function(match,i) {
+					new Activation(me,match,i,me.cxproduct);
+					result = true;
+				},undefined,test); //me.conditions);
 			}
 		}
 		if(callback) {
@@ -643,16 +651,17 @@ var uuid = require("uuid");
 	Rule.prototype.unbind = function(instance) {
 		var me = this, variables = Object.keys(me.bindings);
 		variables.map(function(variable) {
-			var i = me.bindings[variable].indexOf(instance);
-			if(i>=0) {
-				if(me.reactor.tracelevel>2) {
-					Console.log("Unbinding: ",me,variable,instance);
-				}
-				me.bindings[variable].splice(i,1);
-				if(me.bindings[variable].length===0) {
-					me.cxproduct = null;
-					me.reset(false);
-				} else {
+			if(instance instanceof me.domain[variable]) {
+				var i = me.bindings[variable].indexOf(instance);
+				if(i>=0) {
+					if(me.reactor.tracelevel>2) {
+						Console.log("Unbinding: ",me,variable,instance);
+					}
+					me.bindings[variable].splice(i,1);
+					if(me.bindings[variable].length===0) {
+						me.cxproduct = null;
+						//me.reset(false);
+					}
 					me.reset(false,instance);
 				}
 			}
@@ -722,6 +731,7 @@ var uuid = require("uuid");
 		}
 	}
 	function matchObject(index,instance,parentkeys,parentinstances) {
+		if(!index) { return false; }
 		var parentkeys = (parentkeys ? parentkeys : []), 
 			parentinstances = (parentinstances ? parentinstances : []),
 			keys = Object.keys(instance);
@@ -760,11 +770,14 @@ var uuid = require("uuid");
 			return true;
 		});
 	}
-	function RuleReactor () {
+	function RuleReactor (boost) {
+		this.boost = boost;
 		this.rules = {};
 		this.triggerlessRules = {};
 		this.data = new Map();
 		this.agenda = [];
+		this.run.assertions = 0;
+		this.run.modifications = 0;
 	}
 	RuleReactor.prototype.assert = function(instances,callback) {
 		var me = this;
@@ -783,6 +796,7 @@ var uuid = require("uuid");
 				if(me.tracelevel>2) {
 					Console.log("Assert: ",instance);
 				}
+				me.run.assertions++;
 				me.data.set(instance.__rrid__,instance);
 				me.dataModified = true;
 				instancestoprocess.push(instance);
@@ -812,7 +826,8 @@ var uuid = require("uuid");
 							// set new value
 							rrget.value = value;
 							updateIndex(instance.constructor.index,instance,key,oldvalue);
-							me.dataModified = true;
+							me.dataModified = true; // may not have an impact
+							me.run.modifications++;
 							// if the value is an object that has possible rule matches, assert it
 							if(value && value.rules) {
 								me.assert(value);
@@ -860,6 +875,7 @@ var uuid = require("uuid");
 								if(typeof(f)==="function") {
 									var newf = function() {
 										f.apply(value,arguments);
+										me.run.modifications++;
 										// re-test the rules that pattern match the key
 										Object.keys(instance.rules).forEach(function(rulename) {
 											var rule = instance.rules[rulename];
@@ -912,8 +928,11 @@ var uuid = require("uuid");
 		instancestoprocess.forEach(function(instance) {
 			if(instance.rules) {
 				Object.keys(instance.rules).forEach(function(rulename) {
-					//promises.push(instance.rules[ruleinstance].test(instance));
-					rulestotest[rulename] = instance.rules[rulename];
+					var rule = instance.rules[rulename];
+					if(rule.cxproduct) {
+						//promises.push(instance.rules[ruleinstance].test(instance));
+						rulestotest[rulename] = rule;
+					}
 				});
 			}
 		});
@@ -925,14 +944,14 @@ var uuid = require("uuid");
 		}
 	}
 	RuleReactor.prototype.createRule = function(name,salience,domain,condition,action) {
-		var me = this, rule = new Rule(this,name,salience,domain,condition,action);
+		var me = this, rule = new Rule(this,name,salience,domain,condition,action,me.boost);
 		me.rules[rule.name] = rule;
 		if(rule.triggers.length===0) {
 			me.triggerlessRules[rule.name] = rule;
 		}
 		return rule;
 	}
-	RuleReactor.prototype.forAll = function(domain,test) {
+	RuleReactor.forAll = function forAll(domain,test) {
 		if(typeof(domain)!=="object") {
 			throw new TypeError("Domain " + domain + " is not an object in universal quantification");
 		}
@@ -964,7 +983,8 @@ var uuid = require("uuid");
 			}
 		});
 	}
-	RuleReactor.prototype.exists = function(domain,test) {
+	RuleReactor.prototype.forAll  = RuleReactor.forAll;
+	RuleReactor.exists = function exists(domain,test) {
 		if(typeof(domain)!=="object") {
 			throw new TypeError("Domain " + domain + " is not an object in existential quantification");
 		}
@@ -1009,9 +1029,11 @@ var uuid = require("uuid");
 			}
 		});
 	}
-	RuleReactor.prototype.not = function(value) {
+	RuleReactor.prototype.exists = RuleReactor.exists;
+	RuleReactor.not = function not(value) {
 		return !value;
 	}
+	RuleReactor.prototype.not = RuleReactor.not;
 	RuleReactor.prototype.retract = function(instances,run) {
 		var me = this;
 		instances = (Array.isArray(instances) || instances instanceof Array ? instances : [instances]);
@@ -1026,7 +1048,7 @@ var uuid = require("uuid");
 				// restore instance properties
 				Object.keys(instance).forEach(function(key) {
 					var desc = Object.getOwnPropertyDescriptor(instance,key);
-					if(desc.get.name==="rrget") {
+					if(desc.get && desc.get.name==="rrget") {
 						if(typeof(desc.get.originalDescriptor)==="undefined") {
 							delete instance[key];
 						} else {
@@ -1065,52 +1087,63 @@ var uuid = require("uuid");
 			});
 			me.retract(data,false);
 		}
+		me.run.running = false;
 	}
 	RuleReactor.prototype.run = function(max,loose,callback) {
 		var me = this;
-		function run(loose) {
-			while (me.agenda.length>0 && me.run.executions<me.run.max) {
-				me.run.executions++;
-				me.dataModified = false;
-				me.agenda[me.agenda.length-1].execute(me.agenda.length-1);
-				if(me.dataModified===true) {
-					// causes a loop, put in assert? .. but then doe snot run
-					Object.keys(me.triggerlessRules).forEach(function(rulename) {
-						me.triggerlessRules[rulename].test();
+		function run() {
+			if(me.run.stop) {
+				if(me.tracelevel>0) {
+					Console.log("Data Count: ",me.data.size);
+					Console.log("Executions: ",me.run.executions);
+					Console.log("RPS: ",me.run.rps);
+				}
+				if(me.tracelevel>1) {
+					Object.keys(me.rules).forEach(function(rulename) {
+						var rule = me.rules[rulename];
+						Console.log(rule.name,rule.potentialMatches,rule.tested,rule.activated,rule.fired);
 					});
 				}
-				if(loose) {
-					setTimeout(run,0,loose);
-					return;
+				if(typeof(callback)==="function") {
+					callback();
+				}
+				return;
+			}
+			if(me.run.executions<me.run.max) {
+				Object.keys(me.triggerlessRules).forEach(function(rulename) {
+					var rule = me.triggerlessRules[rulename];
+					if(rule.activations.size===0) {
+						rule.test();
+					}
+				});
+				while (me.agenda.length>0) {
+					me.dataModified = false;
+					me.agenda[me.agenda.length-1].execute(me.agenda.length-1);
+					if(loose) {
+						setTimeout(run,0);
+						return;
+					}
 				}
 			}
-			me.run.stop = new Date();
-			me.run.rps = (me.run.executions / (me.run.stop.getTime() - me.run.start.getTime())) * 1000;
-			me.run.running = false;
-			if(me.tracelevel>0) {
-				Console.log("Data Count: ",me.data.size);
-				Console.log("Executions: ",me.run.executions);
-				Console.log("RPS: ",me.run.rps);
-			}
-			if(me.tracelevel>1) {
-				Object.keys(me.rules).forEach(function(rulename) {
-					var rule = me.rules[rulename];
-					Console.log(rule.name,rule.potentialMatches,rule.tested,rule.activated,rule.fired);
-				});
-			}
-			if(typeof(callback)==="function") {
-				callback();
-			}
+			setTimeout(run,10);
 		}
 		if(me.run.running) { return true; }
 		me.run.max = (max ? max : Infinity);
 		me.run.running = true;
 		me.run.executions = 0;
+		me.run.assertions = 0;
+		me.run.modifications = 0;
 		me.run.start = new Date();
+		me.run.stop = null;
 		if(me.tracelevel>0) {
-			Console.log("Run: ",max,loose);
+			Console.log("Run: ",max);
 		}
-		run(loose);
+		run();
+	}
+	RuleReactor.prototype.stop = function() {
+		this.run.stop = new Date();
+		this.run.rps = (this.run.executions / (this.run.stop.getTime() - this.run.start.getTime())) * 1000;
+		this.run.running = false;
 	}
 	RuleReactor.prototype.trace = function(level) {
 		this.tracelevel = level;
