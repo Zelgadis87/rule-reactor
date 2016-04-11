@@ -1,0 +1,314 @@
+<html>
+<body>
+
+<p>Open in debugger to see rule activity</p>
+<script src="../browser/rule-reactor.js"></script>
+<script id="example">
+
+// The Manners Benchmark implemented using CLIPS
+// The original source for the OPS5 benchmark suite is available
+// at http://www.cs.utexas.edu/ftp/pub/ops5-benchmark-suite/
+
+
+var reactor = new RuleReactor(true);
+reactor.trace(0);
+function not() { return reactor.not.apply(reactor,arguments); }
+function assert() { return reactor.assert.apply(reactor,arguments); }
+function retract() { return reactor.retract.apply(reactor,arguments); }
+function exists() { return reactor.exists.apply(reactor,arguments); }
+
+function Guest(name,sex,hobby) {
+	this.name=name;
+	this.sex=sex;
+	this.hobby=hobby
+}
+function LastSeat(lastSeat) {
+	this.seat=lastSeat;
+}
+function Seating(seat1,name1,name2,seat2,id,pid,pathDone) {
+	this.seat1=seat1;
+	this.name1=name1;
+	this.name2=name2;
+	this.seat2=seat2;
+	this.id=id;
+	this.pid=pid;
+	this.pathDone=pathDone;
+}
+function Context(state) {
+	this.state=state;
+}
+function Path(id,name,seat,hobby) {
+	this.id=id;
+	this.name=name;
+	this.seat=seat;
+	this.hobby=hobby;
+}
+function Chosen(id,name,hobby) {
+	this.id=id;
+	this.name=name;
+	this.hobby=hobby;
+}
+function Count(c) {
+	this.c=c;
+}
+
+reactor.createRule("assignFirstSeat",0,{context: Context, guest: Guest, count: Count},
+	function(context,guest,count) {
+		return context.state=="start" &&
+		guest.name &&
+		count.c>=0
+	},
+	function(context,guest,count) {
+		assert(new Seating(1,guest.name,guest.name,1,count.c,0,true));
+		assert(new Path(count.c,guest.name,1));
+		count.c = count.c + 1;
+		context.state = "assign seats";
+	});
+
+reactor.createRule("assignSeats",0,{context: Context,seating: Seating,guest1: Guest,guest2: Guest,count: Count},
+	function(context,seating,guest1,guest2,count) {
+		return context.state=="assign seats" &&
+		seating.pathDone==true &&
+		guest1.name==seating.name2 &&
+		guest2.sex!=guest1.sex &&
+		guest2.hobby==guest1.hobby &&
+		count.c>=0 &&
+		not(exists({path: Path},{path: {id:seating.id,name:guest2.name}})) &&
+		not(exists({chosen: Chosen},{chosen: {id:seating.id,name:guest2.name,hobby:guest2.hobby}}))
+		// change these to pattern matches?
+		//not(exists({path: Path},function(path) { return path.id==seating.id && path.name==guest2.name; }));
+		/not(exists({chosen: Chosen},function(chosen) { return chosen.id==seating.id && chosen.name==guest2.name && chosen.hobby==guest2.hobby; }));
+	},
+	function(context,seating,guest1,guest2,count) {
+		assert(new Seating(seating.seat2,guest1.name,guest2.name,seating.seat2+1,count.c,seating.id,false));
+		assert(new Path(count.c,guest2.name,seating.seat2+1,guest2.hobby));
+		assert(new Chosen(seating.id,guest2.name,guest2.hobby));
+		count.c = count.c + 1;
+		context.state = "make path";
+	});
+
+reactor.createRule("makePath",1,{context: Context,seating: Seating,path: Path},
+	function(context,seating,path) {
+		return context.state=="make path" &&
+		seating.pathDone==false &&
+		path.id==seating.pid &&
+		//not(exists({otherpath: Path},{otherpath: {id:seating.id,name:path.name}}));
+		// change to pattern match?
+		not(exists({otherpath: Path},function(otherpath) { return otherpath.id==seating.id && otherpath.name==path.name; }));
+	},
+	function(seating,path) {
+		assert(new Path(seating.id,path.name,path.seat,path.hobby));
+	});
+
+reactor.createRule("pathDone",-1,{context: Context,seating: Seating},
+	function(context,seating) {
+		return context.state=="make path" &&
+		seating.pathDone==false;
+	},
+	function(context,seating) {
+		seating.pathDone = true;
+		context.state = "check done";
+	});
+ 
+ reactor.createRule("areWeDone",0,{context: Context,lastSeat: LastSeat,seating: Seating},
+ 	function(context,lastSeat,seating) {
+ 		return context.state == "check done" &&
+ 		seating.pathDone == true &&
+ 		lastSeat.seat == seating.seat2;
+ 	},
+ 	function(context,seating) {
+ 		context.state = "assemble results";
+ 	});
+
+reactor.createRule("continue",-1,{context: Context},
+	function(context) {
+		return context.state == "check done";
+	},
+	function(context) {
+		context.state = "assign seats";
+	});
+
+
+var results = [];
+reactor.createRule("assembleResults",0,{context: Context, seating: Seating, lastSeat: LastSeat, path: Path},
+	function(context,seating,lastSeat,path) {
+		return context.state=="assemble results" &&
+		lastSeat.seat==seating.seat2 &&
+		path.id==seating.id
+	},
+	function(path) {
+		results.push(path);
+	});
+	
+reactor.createRule("printResults",-1,{context: Context},
+	function(context) {
+		return context.state=="assemble results";
+	},
+	function() {
+		results.sort(function(result1,result2) { return result1.seat - result2.seat; });
+		var seating = "";
+		results[0].hobby = results[1].hobby;
+		results.forEach(function(result) {
+			seating += result.name + " " + result.hobby + " ";
+		});
+		console.log(seating);
+		reactor.stop();
+		console.log("Elapsed ms: ",reactor.run.stop - reactor.run.start);
+		console.log("Executions: ",reactor.run.executions);
+		console.log("Assertions: ",reactor.run.assertions);
+		console.log("Modifications: ",reactor.run.modifications);
+		console.log("RPS: ",reactor.run.rps);
+	});
+/*
+assert([
+	new Guest("n1","m","h3"),
+	new Guest("n1","m","h2"),
+	new Guest("n2","m","h2"),
+	new Guest("n2","m","h3"),
+	new Guest("n3","m","h1"),
+	new Guest("n3","m","h2"),
+	new Guest("n3","m","h3"),
+	new Guest("n4","f","h3"),
+	new Guest("n4","f","h2"),
+	new Guest("n5","f","h1"),
+	new Guest("n5","f","h2"),
+	new Guest("n5","f","h3"),
+	new Guest("n6","f","h3"),
+	new Guest("n6","f","h1"),
+	new Guest("n6","f","h2"),
+	new Guest("n7","f","h3"),
+	new Guest("n7","f","h2"),
+	new Guest("n8","m","h3"),
+	new Guest("n8","m","h1"),
+	new LastSeat(8),
+	new Count(1),
+	new Context("start")
+]);
+*/
+assert([
+new Guest("n1","m","h1"),
+new Guest("n1","m","h3"),
+new Guest("n2","f","h3"),
+new Guest("n2","f","h2"),
+new Guest("n2","f","h1"),
+new Guest("n3","f","h1"),
+new Guest("n3","f","h2"),
+new Guest("n4","f","h3"),
+new Guest("n4","f","h1"),
+new Guest("n5","f","h1"),
+new Guest("n5","f","h2"),
+new Guest("n6","m","h1"),
+new Guest("n6","m","h2"),
+new Guest("n6","m","h3"),
+new Guest("n7","f","h2"),
+new Guest("n7","f","h1"),
+new Guest("n7","f","h3"),
+new Guest("n8","f","h1"),
+new Guest("n8","f","h3"),
+new Guest("n8","f","h2"),
+new Guest("n9","f","h1"),
+new Guest("n9","f","h3"),
+new Guest("n9","f","h2"),
+new Guest("n10","m","h2"),
+new Guest("n10","m","h1"),
+new Guest("n11","m","h2"),
+new Guest("n11","m","h1"),
+new Guest("n12","m","h3"),
+new Guest("n12","m","h2"),
+new Guest("n13","m","h1"),
+new Guest("n13","m","h3"),
+new Guest("n14","m","h3"),
+new Guest("n14","m","h2"),
+new Guest("n15","f","h2"),
+new Guest("n15","f","h1"),
+new Guest("n15","f","h3"),
+new Guest("n16","f","h3"),
+new Guest("n16","f","h2"),
+new Guest("n16","f","h1"),
+new Guest("n17","m","h3"),
+new Guest("n17","m","h2"),
+new Guest("n18","f","h2"),
+new Guest("n18","f","h1"),
+new Guest("n19","f","h1"),
+new Guest("n19","f","h2"),
+new Guest("n19","f","h3"),
+new Guest("n20","f","h1"),
+new Guest("n20","f","h2"),
+new Guest("n20","f","h3"),
+new Guest("n21","m","h2"),
+new Guest("n21","m","h3"),
+new Guest("n21","m","h1"),
+new Guest("n22","f","h1"),
+new Guest("n22","f","h2"),
+new Guest("n22","f","h3"),
+new Guest("n23","f","h3"),
+new Guest("n23","f","h1"),
+new Guest("n23","f","h2"),
+new Guest("n24","m","h1"),
+new Guest("n24","m","h3"),
+new Guest("n25","f","h3"),
+new Guest("n25","f","h2"),
+new Guest("n25","f","h1"),
+new Guest("n26","f","h3"),
+new Guest("n26","f","h2"),
+new Guest("n26","f","h1"),
+new Guest("n27","m","h3"),
+new Guest("n27","m","h1"),
+new Guest("n27","m","h2"),
+new Guest("n28","m","h3"),
+new Guest("n28","m","h1"),
+new Guest("n29","m","h3"),
+new Guest("n29","m","h2"),
+new Guest("n29","m","h1"),
+new Guest("n30","m","h2"),
+new Guest("n30","m","h1"),
+new Guest("n30","m","h3"),
+new Guest("n31","m","h2"),
+new Guest("n31","m","h1"),
+new Guest("n32","m","h1"),
+new Guest("n32","m","h3"),
+new Guest("n32","m","h2"),
+new LastSeat(32),
+new Count(1),
+new Context("start")
+]);
+
+function run() {
+	reactor.run(Infinity);
+}
+run();
+
+/*
+
+((Guest name n1 sex m hobby h3)
+(Guest name n1 sex m hobby h2)
+(Guest name n2 sex m hobby h2)
+(Guest name n2 sex m hobby h3)
+(Guest name n3 sex m hobby h1)
+(Guest name n3 sex m hobby h2)
+(Guest name n3 sex m hobby h3)
+(Guest name n4 sex f hobby h3)
+(Guest name n4 sex f hobby h2)
+(Guest name n5 sex f hobby h1)
+(Guest name n5 sex f hobby h2)
+(Guest name n5 sex f hobby h3)
+(Guest name n6 sex f hobby h3)
+(Guest name n6 sex f hobby h1)
+(Guest name n6 sex f hobby h2)
+(Guest name n7 sex f hobby h3)
+(Guest name n7 sex f hobby h2)
+(Guest name n8 sex m hobby h3)
+(Guest name n8 sex m hobby h1)
+(Last seat 8)
+(Count c 1)
+(context state start)) */
+
+</script>
+
+<script>
+document.write("<pre>" + document.getElementById("example").textContent + "</pre>"); 
+</script>
+
+
+</body></html>
+
