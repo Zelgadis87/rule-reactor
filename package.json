@@ -1,6 +1,6 @@
 {
   "name": "rule-reactor",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "description": "A light weight, fast, expressive forward chaining business rule engine leveraging JavaScript internals, lazy cross-products, and Functions as objects rather than Rete.",
   "main": "index.js",
   "client": "./browser/rule-reactor.js",
@@ -38,7 +38,8 @@
     "chai": "^3.4.1",
     "codeclimate-test-reporter": "^0.2.0",
     "istanbul": "^0.4.2",
-    "mocha": "^2.3.4"
+    "mocha": "^2.3.4",
+    "bluebird": "^3.3.5"
   },
   "dependencies": {
     "uuid": "^2.0.1"

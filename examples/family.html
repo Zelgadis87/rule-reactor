@@ -2,10 +2,11 @@
 <body>
 
 <p>Open in debugger to see rule activity</p>
+<script src="../node_modules/bluebird/js/browser/bluebird.js"></script>
 <script src="../browser/rule-reactor.js"></script>
 <script id="example">
 
-var reactor = new RuleReactor(true);
+var reactor = new RuleReactor({});
 function not() { return reactor.not.apply(reactor,arguments); }
 function exists() { return reactor.exists.apply(reactor,arguments); }
 function forAll() { return reactor.forAll.apply(reactor,arguments); }

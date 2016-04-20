@@ -4,9 +4,6 @@
 
 <script src="../browser/rule-reactor.js"></script>
 <script id="example">
-var reactor = new RuleReactor(true);
-function not() { return reactor.not.apply(reactor,arguments); }
-function assert() { return reactor.assert.apply(reactor,arguments); }
 
 function Phase() {
 	this.name = "match";
@@ -24,6 +21,11 @@ function Pair(odd,even) {
 function TestData(id) {
 	this.id = (id ? id : 0);
 }
+
+var reactor = new RuleReactor({Phase:Phase,Counter:Counter,Pair:Pair,TestData:TestData},true);
+function assert() { return reactor.assert.apply(reactor,arguments); }
+
+reactor.trace(0);
 
 var create = reactor.createRule("create",0,{c: Counter},
 	function(c) {
@@ -49,7 +51,7 @@ reactor.createRule("stop",-1,{},
 	});
 
 		
-reactor.trace(0);
+
 var phase = new Phase();
 assert([new Counter(), new TestData(),phase]);
 reactor.run(Infinity,true,function() {

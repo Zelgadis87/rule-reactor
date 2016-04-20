@@ -79,47 +79,76 @@ var uuid = require("uuid");
 		 
 			return result;
 	}
-	
-//	portions from http://phrogz.net/lazy-cartesian-product
+
+//		portions from http://phrogz.net/lazy-cartesian-product
 	function CXProduct(collections){
-		this.collections = (collections ? collections : []);
-		Object.defineProperty(this,"length",{set:function() {},get:function() { if(this.collections.length===0) return 0; var size = 1; this.collections.forEach(function(collection) { size *= collection.length; }); return size; }});
-		Object.defineProperty(this,"size",{set:function() {},get:function() { return this.length; }});
-	}
-	CXProduct.prototype.add = function(collections) {
 		var me = this;
-		if(!me.fixed) {
-			collections.forEach(function(collection) {
-				me.collections.push(collection);
-			});
-		} // should throw if fixed
-		return me;
+		me.collections = (collections ? collections : []);
 	}
-	function testpattern(pattern,row) {
-		return pattern.length===row.length && row.every(function(element,i) {
-			return pattern[i]===undefined || pattern[i]===element || (typeof(pattern[i])==="function" && pattern[i].call(row,row[i],i));
-		});
+	CXProduct.prototype.length = function() {
+		var me = this;
+		if(me.collections.length===0) {
+			return 0;
+		}
+		var size = 1;
+		this.collections.forEach(function(collection) { size *= collection.length; });
+		if(me.start!=undefined) {
+			if(me.end!=undefined) {
+				return me.end - me.start;
+			}
+			return size - me.start;
+		}
+		return size; 
 	}
-	CXProduct.prototype.every = function(callback,pattern,test) {
-		var me = this, i = 0;
+	CXProduct.prototype.length.size = CXProduct.prototype.length;
+	CXProduct.prototype.every = function(callback,pattern) {
+		function dive(cxproduct,d,counter,collections,lens,p,callback,pattern){
+			var a=collections[d], max=collections.length-1,len=lens[d],results=[],params;
+			if (d===max) {
+				for (var i=0;i<len;++i) { 
+					p[d]=a[i]; 
+					if(!callback(p.slice(0),counter.count)) {
+						return false;
+					}; 
+					counter.count++;
+				}
+			} else {
+				for (var i=0;i<len;++i) {
+					p[d]=a[i];
+					dive(cxproduct,d+1,counter,collections,lens,p,callback,pattern);
+				}
+			}
+			p.pop();
+		}
+		if(typeof(start)==="number") {
+			return this.some2(callback,pattern,test);
+		}
+		var me = this, p=[],lens=[];
+		for (var i=me.collections.length;i--;) lens[i]=me.collections[i].length;
+		if(dive(me,0,{count:0},me.collections,lens,p,callback,pattern)!==false) {
+			return true;
+		}
+	}
+	CXProduct.prototype.every2 = function(callback,pattern) {
+		var me = this, i = 0, max = me.length();
 		do {
 			var value = me.get(i);
 			if(value!==undefined) {
-				if((!test || test(value)) && (!pattern || testpattern(pattern,value)) && !callback(value)) {
+				if((!callback || callback(value)) && (!pattern || me.testpattern(pattern,value))) {
 					return false;
 				};
 			}
 			i++;
-		} while(value!==undefined); 
+		} while(value!==undefined && i<max); 
 		return true;
 	}
-	function get(n,collections,dm,c) {
-		for (var i=collections.length;i--;)c[i]=collections[i][(n/dm[i][0]<<0)%dm[i][1]];
-	}
 	CXProduct.prototype.get = function(index,pattern){
+		function get(n,collections,dm,c) {
+			for (var i=collections.length;i--;)c[i]=collections[i][(n/dm[i][0]<<0)%dm[i][1]];
+		}
 		var me = this, c = [];
 		for (var dm=[],f=1,l,i=me.collections.length;i--;f*=l){ dm[i]=[f,l=me.collections[i].length];  }
-		if(index>=me.length) {
+		if(index>=me.length()) {
 			return undefined;
 		}
 		get(index,me.collections,dm,c);
@@ -129,59 +158,41 @@ var uuid = require("uuid");
 			return c.slice(0);
 		}
 	}
-	CXProduct.prototype.has = function(pattern,test) {
-		var me = this, hasundefined = false;
-		return pattern.every(function(value,i) {
-			if(value===undefined) {
-				hasundefined=true;
+	CXProduct.prototype.some = function(callback,pattern) {
+		function dive(cxproduct,d,counter,collections,lens,p,callback,pattern){
+			var a=collections[d], max=collections.length-1,len=lens[d],results=[],params;
+			if (d===max) {
+				for (var i=0;i<len;++i) { 
+					p[d]=a[i]; 
+					if(callback(p.slice(0),counter.count)) {
+						return true;
+					}; 
+					counter.count++;
+				}
+			} else {
+				for (var i=0;i<len;++i) {
+					p[d]=a[i];
+					dive(cxproduct,d+1,counter,collections,lens,p,callback,pattern);
+				}
 			}
-			if(value===undefined || me.collections[i].indexOf(value)>=-1) {
-				return true;
-			}
-		}) && (!test || test(pattern)) && (hasundefined || me.indexOf(pattern)>=0);
-	}
-	CXProduct.prototype.indexOf = function(row) {
-		var me = this, index = 0;
-		for (var dm=[],f=1,l,i=me.collections.length;i--;f*=l){ dm[i]=f,l=me.collections[i].length; }
-		if(me.collections.every(function(collection,i) {
-			var pos = collection.indexOf(row[i]);
-			if(pos>=0) {
-				index += (pos * dm[i]);
-				return false;
-			}
-			return false;
-		})) {
-			return index;
+			p.pop();
 		}
-		return -1;
-	}
-	CXProduct.prototype.intersection = function(cxproduct) {
-		var me = this, collections = [];
-		if(me.collections.length!==cxproduct.collections.length) {
-			return new CXProduct([]);
+		if(typeof(start)==="number") {
+			return this.some2(callback,pattern,test);
 		}
-		me.collections.forEach(function(collection,i) {
-			collections.push(intersection(collection,cxproduct.collections[i]));
-		});
-		return new CXProduct(collections);
+		var me = this, p=[],lens=[];
+		for (var i=me.collections.length;i--;) lens[i]=me.collections[i].length;
+		return dive(me,0,{count:0},me.collections,lens,p,callback,pattern);
 	}
-	CXProduct.prototype.push = function(collectionIndex,element) {
-		if(!me.fixed) {
-			this.collections[collectionIndex].push(element);
-		} // if fixed should throw
-		return this;
-	}
-	CXProduct.prototype.some = function(callback,pattern,test) {
-		var me = this, i = 0, value;
+	CXProduct.prototype.some2 = function(callback,pattern) {
+		var me = this, i = 0, value, max = me.length();
 		do {
 			value = me.get(i);
-			if(value!==undefined) {
-				if((!test || test(value)) && (!pattern || testpattern(pattern,value)) && callback(value)) {
-					return true;
-				};
+			if(value!=undefined && (!callback || callback(value)) && (!pattern || me.testpattern(pattern,value))) {
+				return true;
 			}
 			i++;
-		} while(value!==undefined); 
+		} while(i<max); 
 		return false;
 	}
 	CXProduct.prototype.verify = function(i,row) {
@@ -189,29 +200,43 @@ var uuid = require("uuid");
 		var match = me.get(i);
 		return match && match.every(function(element,i) { return element===row[i]; });
 	}
-	function dive(cxproduct,d,counter,collections,lens,p,callback,pattern,test){
-		var a=collections[d], max=collections.length-1,len=lens[d],results=[],params;
-		if (d===max) {
-			for (var i=0;i<len;++i) { 
-				p[d]=a[i]; 
-				if(!test || test(p)) {
+	CXProduct.prototype.forEach1 = function(callback,pattern) {
+		function dive(cxproduct,d,counter,collections,lens,p,callback,pattern){
+			var a=collections[d], max=collections.length-1,len=lens[d],results=[],params;
+			if (d===max) {
+				for (var i=0;i<len;++i) { 
+					p[d]=a[i]; 
 					callback(p.slice(0),counter.count); 
+					counter.count++;
 				}
-				counter.count++;
+			} else {
+				for (var i=0;i<len;++i) {
+					p[d]=a[i];
+					dive(cxproduct,d+1,counter,collections,lens,p,callback,pattern);
+				}
 			}
-		} else {
-			for (var i=0;i<len;++i) {
-				p[d]=a[i];
-				dive(cxproduct,d+1,counter,collections,lens,p,callback,pattern,test);
-			}
+			p.pop();
 		}
-		p.pop();
-	}
-	CXProduct.prototype.forEach = function(callback,pattern,test) {
-		var me = this, p=[],lens=[], thetest = test, counter = {count:0};
+		if(typeof(start)==="number") {
+			this.forEach2(callback,pattern,test);
+			return;
+		}
+		var me = this, p=[],lens=[];
 		for (var i=me.collections.length;i--;) lens[i]=me.collections[i].length;
-		dive(me,0,counter,me.collections,lens,p,callback,pattern,thetest);
+		dive(me,0,{count:0},me.collections,lens,p,callback,pattern);
 	}
+	CXProduct.prototype.forEach2 = function(callback,pattern) {
+		var me = this, i = (typeof(me.start)==="number" ? me.start : 0), max = (typeof(me.end)==="number" ? me.end : me.length());
+		while(i<max) {
+			var value = me.get(i);
+			if(value!==undefined) {
+				callback(value);
+			}
+			i++;
+		}
+	}
+	CXProduct.prototype.forEach = CXProduct.prototype.forEach1;//	portions from http://phrogz.net/lazy-cartesian-product
+	
 	
 	function getFunctionArgs(f) {
 		var str = f+"";
@@ -226,55 +251,18 @@ var uuid = require("uuid");
 		}
 		return result;
 	}
-	function definePropertyGenerator(ruleReactor,constructor,key) {
-		var propertyGenerator = function(value) {
-			var get = function() {
-				return get.value;
-			};
-			get.value = value;
-			var set = function(value) {
-				var instance = this;
-				if(instance.__rrid__ && get.value!==value) {
-					if(me.tracelevel>2) {
-						Console.log("Modify: ",instance,key,get.value,"=>",value);
-					}
-					var oldvalue = get.value;
-					// set new value
-					get.value = value;
-					updateIndex(this.constructor.index,instance,key,oldvalue);
-					ruleReactor.dataModified = true;
-					// if the value is an object that has possible rule matches, assert it
-					if(value && value.rules) {
-						ruleReactor.assert(value);
-					}
-					// re-test the rules that pattern match the key
-					Object.keys(instance.rules).forEach(function(rulename) {
-						var rule = instance.rules[rulename];
-						if(Object.keys(rule.range).some(function(variable) {
-							return rule.range[variable][key] && instance instanceof rule.domain[variable];
-						})) {
-							var activations = rule.activations.get(instance);
-							if(activations) {
-								activations.forEach(function(activation) {
-									activation.delete();
-								});
-							}
-							rule.test(instance,key);
-						}
-					});
-				}
-			}
-			Object.defineProperty(this,key,{enumerable:true,configurable:true,get:get,set:set});
-			return get.value;
-		}
-		Object.defineProperty(constructor.prototype,key,{enumerable:true,configurable:true,get:propertyGenerator,set:propertyGenerator});
-	}
-	function compile(rule,boost) {
-		var me = this, variables = Object.keys(rule.domain);
+	function compile(reactor,rule,boost) {
+		var variables = Object.keys(rule.domain);
 		variables.forEach(function(variable) {
 			var cons = rule.domain[variable];
 			if(typeof(cons)!=="function") {
 				throw new TypeError("Domain variable " + variable + " is not a constructor in rule " + rule.name);
+			}
+			if(!cons.name || cons.name.length===0 || cons.name==="anonymous") {
+				throw new TypeError("Constructor for domain variable " + variable + " in rule " + rule.name + " must have a name.");
+			}
+			if(!rule.reactor.domain[cons.name]) {
+				rule.reactor.domain[cons.name] = cons;
 			}
 			cons.instances = (cons.instances ? cons.instances : []);
 			cons.index = (cons.index ? cons.index : {});
@@ -283,7 +271,7 @@ var uuid = require("uuid");
 			cons.prototype.activeKeys = (cons.prototype.activeKeys ? cons.prototype.activeKeys : {});
 			cons.exists = function(f) {
 				f = (f ? f : function() { return true; });
-				return cons.instances && cons.instances.some(function(instance) {
+				return cons.instances && cons.instances.soreactor(function(instance) {
 					return f(instance);
 				});
 			};
@@ -305,7 +293,7 @@ var uuid = require("uuid");
 							// cache what keys are associated with what variables
 							rule.range[variable][key] = true;
 						}
-						// don't really do a replacement!
+						// don't really do a replace!
 						return match;
 					}
 				);
@@ -322,6 +310,9 @@ var uuid = require("uuid");
 					rule.triggers.push(quantification);
 					variables.forEach(function(variable) {
 						var cons = domain[variable];
+						if(!rule.reactor.domain[cons.name]) {
+							rule.reactor.domain[cons.name] = cons;
+						}
 						quantification.range[variable] = (quantification.range[variable] ? quantification.range[variable] : {});
 						cons.prototype.rules = (cons.prototype.rules ? cons.prototype.rules : {});
 						cons.prototype.rules[rule.name] = rule;
@@ -335,12 +326,12 @@ var uuid = require("uuid");
 									// cache what keys are associated with what variables
 									quantification.range[variable][key] = true;
 								}
-								// don't really do a replacement!
+								// don't really do a replace!
 								return match;
 							}
 						);
 					});
-					// don't really do a replacement!
+					// don't really do a replace!
 					return match;
 				}
 			);
@@ -351,6 +342,9 @@ var uuid = require("uuid");
 						rule.triggers.push(quantification);
 						variables.forEach(function(variable) {
 							var cons = domain[variable];
+							if(!rule.reactor.domain[cons.name]) {
+								rule.reactor.domain[cons.name] = cons;
+							}
 							quantification.range[variable] = (quantification.range[variable] ? quantification.range[variable] : {});
 							cons.prototype.rules = (cons.prototype.rules ? cons.prototype.rules : {});
 							cons.prototype.rules[rule.name] = rule;
@@ -364,12 +358,12 @@ var uuid = require("uuid");
 										// cache what keys are associated with what variables
 										quantification.range[variable][key] = true;
 									}
-									// don't really do a replacement!
+									// don't really do a replacereactornt!
 									return match;
 								}
 							);
 						});
-						// don't really do a replacement!
+						// don't really do a replacereactornt!
 						return match;
 					}
 				);
@@ -377,7 +371,7 @@ var uuid = require("uuid");
 		rule.compiledConditions = [];
 		rule.conditions.forEach(function(condition,i) {
 			if((condition+"").indexOf("return")===-1) {
-				throw new TypeError("Condition function missing a return statement in rule '" + rule.name + "' condition " + i);
+				throw new TypeError("Condition function missing a return statereactornt in rule '" + rule.name + "' condition " + i);
 			}
 			var args = getFunctionArgs(condition);
 			condition.required = new Array(args.length);
@@ -390,14 +384,14 @@ var uuid = require("uuid");
 			});
 			if(!boost) {
 				rule.compiledConditions.push(function(match) {
-					var me = this, args = [];
+					var reactor = this, args = [];
 					// no required = domainless
 					if(!condition.required || condition.required.every(function(i) {
 						if(match[i]!==undefined) {
 							return args.push(match[i]);
 						}
 					})) {
-						return condition.apply(me,args);
+						return condition.apply(reactor,args);
 					}
 					return true;
 				});
@@ -419,14 +413,14 @@ var uuid = require("uuid");
 		});
 		// do not add full compilation since actions are allowed to use closure scope and it will break that
 		rule.compiledAction = function(match) {
-			var me = this, args = [];
+			var reactor = this, args = [];
 			// no required = domainless
 			if(!rule.action.required || rule.action.required.every(function(i) {
 				if(match[i]!==undefined) {
 					return args.push(match[i]);
 				}
 			})) {
-				rule.action.apply(me,args);
+				rule.action.apply(reactor,args);
 			}
 		};
 	}
@@ -481,11 +475,14 @@ var uuid = require("uuid");
 			if(!supresslog && me.rule.reactor.tracelevel>1) {
 				Console.log("Deactivating: ",me.rule,me.match);
 			}
-			var activations = me.rule.activations.get(me.instance);
+			var activations = me.rule.activations.get(instance);
 			if(activations) {
 				var i = activations.indexOf(me);
 				if(i>=0) {
 					activations.splice(i,1);
+					if(activations.length===0) {
+						me.rule.activations.delete(instance);
+					}
 				}
 			}
 			if(index!=undefined) {
@@ -530,13 +527,17 @@ var uuid = require("uuid");
 		me.tested = 0;
 		me.activated = 0;
 		me.fired = 0;
-		compile.call(reactor,this,me.boost);
+		//if(me.reactor.processor) {
+		//	setTimeout(compile,0,reactor,me,me.boost);
+		//} else {
+			compile(reactor,me,me.boost);
+		//}
 		if(me.reactor.tracelevel>2) {
-			Console.log("New Rule: ",this);
+			Console.log("New Rule: ",me);
 		}
 	} 
 	Rule.prototype.bind = function(instance,test) {
-		var me = this, variables = Object.keys(me.bindings), values = [];
+		var me = this, variables = Object.keys(me.bindings);
 		variables.map(function(variable) {
 			if(instance instanceof me.domain[variable] && me.bindings[variable].indexOf(instance)===-1) {
 				if(me.reactor.tracelevel>2) {
@@ -545,16 +546,8 @@ var uuid = require("uuid");
 				me.bindings[variable].push(instance);
 			}
 		});
-		if(variables.every(function(variable,i) {
-			values.push(me.bindings[variable]);
-			return me.bindings[variable].length>0;
-		})) {
-			if(!me.cxproduct) {
-				me.cxproduct = new CXProduct(values);
-			}
-			if(test) {
-				me.test(instance);
-			}
+		if(test) {
+			me.test(instance);
 		}
 	}
 	Rule.prototype.delete = function() {
@@ -573,60 +566,67 @@ var uuid = require("uuid");
 		this.reactor.run.executions++;
 		this.compiledAction(match);
 	}
-	Rule.prototype.test = function(instance,key,callback) { 
-		var me = this, variables = Object.keys(me.domain), result = false, values = [];
+	Rule.prototype.test = function(instance,key) {
+		function yieldtime() { };
+		var me = this, variables = Object.keys(me.domain), result = false, values = []
 		if(!variables.every(function(variable) {
 			values.push(me.bindings[variable]);
 			return me.bindings[variable].length>0;
 		})) {
-			return result;
+			me.cxproduct = null;
+			return false;
+		}
+		
+		if(!me.cxproduct) {
+			me.cxproduct = new CXProduct(values);
 		}
 		if(me.reactor.tracelevel>2) {
 			Console.log("Testing: ",me,instance,key);
 		}
 		me.tested++;
-		var test = function (match) {
-			return me.compiledConditions.every(function(condition) {
+		var test = function (match,i) {
+			if(me.compiledConditions.every(function(condition) {
 				return condition.call(me,match);
-			});
+			})) {
+				new Activation(me,match,i,me.cxproduct,instance);
+				result = true;
+				return true;
+			};
 		}
 		if(variables.length===0) {
 			if(test()) {
-				new Activation(me,undefined,undefined,undefined,instance);
 				result = true;
 			} else {
 				me.reset(instance);
+				result = false;
 			}
 		} else {
-			if(me.cxproduct) {
-				me.potentialMatches = Math.max(me.potentialMatches,me.cxproduct.size);
-			}
+			me.potentialMatches = Math.max(me.potentialMatches,me.cxproduct.length());
 			if(instance) {
+				var passed = false;
 				variables.forEach(function(variable,i) {
-					var collections = me.cxproduct.collections.slice(0);
+					var collections = me.cxproduct.collections.slice(0), promises = [];
 					if(instance instanceof me.domain[variable]) {
 						collections[i] = [instance];
 						var cxproduct = new CXProduct(collections);
-						cxproduct.forEach(function(match,i) {
-							new Activation(me,match,i,cxproduct,instance);
-							result = true;
-						},undefined,test); //me.conditions);
+						test = function (match,i) {
+							if(me.compiledConditions.every(function(condition) {
+								return condition.call(me,match);
+							})) {
+								new Activation(me,match,i,cxproduct,instance);
+								result = true;
+							};
+						}
+						cxproduct.forEach(test);
 					}
 				});
-			} else if(me.cxproduct) {
-				me.cxproduct.forEach(function(match,i) {
-					new Activation(me,match,i,me.cxproduct);
-					result = true;
-				},undefined,test); //me.conditions);
+			} else {
+				me.cxproduct.forEach(test);
 			}
 		}
-		if(callback) {
-			callback(null,result);
-		} else {
-			return result;
-		}
+		return result;
 	}
-	Rule.prototype.reset = function(retest,instance) {
+	Rule.prototype.reset = function(instance) {
 		var me = this;
 		if(me.reactor.tracelevel>2) {
 			Console.log("Reseting: ",me,instance);
@@ -642,9 +642,6 @@ var uuid = require("uuid");
 				
 			}
 		});
-		if(retest) {
-			me.test(instance);
-		}
 	}
 	
 	Rule.prototype.unbind = function(instance) {
@@ -659,9 +656,8 @@ var uuid = require("uuid");
 					me.bindings[variable].splice(i,1);
 					if(me.bindings[variable].length===0) {
 						me.cxproduct = null;
-						//me.reset(false);
 					}
-					me.reset(false,instance);
+					me.reset(instance);
 				}
 			}
 		});
@@ -769,7 +765,7 @@ var uuid = require("uuid");
 			return true;
 		});
 	}
-	function RuleReactor (boost) {
+	function RuleReactor (domain,boost) {
 		this.boost = boost;
 		this.rules = {};
 		this.triggerlessRules = {};
@@ -777,8 +773,10 @@ var uuid = require("uuid");
 		this.agenda = [];
 		this.run.assertions = 0;
 		this.run.modifications = 0;
+		this.run.executions = 0;
+		this.domain = (domain ? domain : {});
 	}
-	RuleReactor.prototype.assert = function(instances,callback) {
+	RuleReactor.prototype.assert = function(instances,callback,timeout) {
 		var me = this;
 		// add instance to class.constructor.instances
 		instances = (Array.isArray(instances) || instances instanceof Array ? instances : [instances]);
@@ -928,10 +926,8 @@ var uuid = require("uuid");
 			if(instance.rules) {
 				Object.keys(instance.rules).forEach(function(rulename) {
 					var rule = instance.rules[rulename];
-					if(rule.cxproduct) {
-						//promises.push(instance.rules[ruleinstance].test(instance));
-						rulestotest[rulename] = rule;
-					}
+					//promises.push(instance.rules[ruleinstance].test(instance));
+					rulestotest[rulename] = rule;
 				});
 			}
 		});
@@ -1110,21 +1106,20 @@ var uuid = require("uuid");
 			}
 			if(me.run.executions<me.run.max) {
 				Object.keys(me.triggerlessRules).forEach(function(rulename) {
-					var rule = me.triggerlessRules[rulename];
-					if(rule.activations.size===0) {
+					var rule = me.triggerlessRules[rulename], activations = rule.activations.get(undefined);
+					if(!activations || activations.length===0) {
 						rule.test();
 					}
 				});
 				while (me.agenda.length>0) {
 					me.dataModified = false;
 					me.agenda[me.agenda.length-1].execute(me.agenda.length-1);
-					if(loose) {
-						setTimeout(run,0);
-						return;
+					if(me.dataModified) {
+						break;
 					}
 				}
 			}
-			setTimeout(run,10);
+			setTimeout(run,0);
 		}
 		if(me.run.running) { return true; }
 		me.run.max = (max ? max : Infinity);
@@ -1137,7 +1132,7 @@ var uuid = require("uuid");
 		if(me.tracelevel>0) {
 			Console.log("Run: ",max);
 		}
-		run();
+		setTimeout(run(),0);
 	}
 	RuleReactor.prototype.stop = function() {
 		this.run.stop = new Date();
@@ -1146,6 +1141,13 @@ var uuid = require("uuid");
 	}
 	RuleReactor.prototype.trace = function(level) {
 		this.tracelevel = level;
+		if(this.processor) {
+			if(level>3) {
+				this.processor.trace(1);
+			} else {
+				this.processor.trace(0);
+			}
+		}	
 	}
 
 	if (this.exports) {

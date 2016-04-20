@@ -4,15 +4,10 @@
 <p>Rule base adapted from: http://www.csis.ysu.edu/~john/824/examples/EMH1.txt</p>
 
 <p>Open in debugger to see rule activity</p>
+<script src="../node_modules/bluebird/js/browser/bluebird.js"></script>
 <script src="../browser/rule-reactor.js"></script>
+
 <script id="example">
-var reactor = new RuleReactor();
-
-function not() { return reactor.not.apply(reactor,arguments); }
-function exists() { return reactor.exists.apply(reactor,arguments); }
-
-
-reactor.trace(3);
 
 // define the business object model consisting of
 // Patient, Diagnosis, and Treatment. Diagnosis
@@ -30,6 +25,15 @@ function Diagnosis(name,reason) {
 function Treatment(name) { 
 	this.name = name;
 }
+
+var reactor = new RuleReactor({Patient:Patient,Diagnosis:Diagnosis,Treatment:Treatment},true);
+
+function not() { return reactor.not.apply(reactor,arguments); }
+function exists() { return reactor.exists.apply(reactor,arguments); }
+
+
+reactor.trace(3);
+
 
 // In its simplest form, a rule is just boolean condition function which is a
 // "template" that the inference engine will try to match to some
@@ -99,7 +103,7 @@ reactor.createRule("Allergy Pills",0,{p: Patient},
 	});	
 reactor.createRule("Bed Rest",0,{p: Patient},
 	function(p) {
-		return !p.treatment && p.diagnosis && p.diagnosis .name=="flu";
+		return !p.treatment && p.diagnosis && p.diagnosis.name=="flu";
 	},
 	function(p) {
 		p.treatment = new Treatment("bed rest");

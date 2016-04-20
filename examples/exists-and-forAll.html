@@ -4,19 +4,21 @@
 <p>Rule base adapted from: http://www.csis.ysu.edu/~john/824/examples/EMH1.txt</p>
 
 <p>Open in debugger to see rule activity</p>
+<script src="../node_modules/bluebird/js/browser/bluebird.js"></script>
 <script src="../browser/rule-reactor.js"></script>
 <script id="example">
-
-var reactor = new RuleReactor();
-function not() { return reactor.not.apply(reactor,arguments); }
-function assert() { return reactor.assert.apply(reactor,arguments); } // eliminat eneed by using compiler
-function exists() { return reactor.exists.apply(reactor,arguments); }
-function forAll() { return reactor.forAll.apply(reactor,arguments); }
 
 function Person(name) { this.name = name; }
 function Home(owner) { 
 	this.owner = owner; 
 }
+
+var reactor = new RuleReactor({Person:Person,Home:Home},true);
+function not() { return reactor.not.apply(reactor,arguments); }
+function assert() { return reactor.assert.apply(reactor,arguments); } // eliminat eneed by using compiler
+function exists() { return reactor.exists.apply(reactor,arguments); }
+function forAll() { return reactor.forAll.apply(reactor,arguments); }
+reactor.trace(4);
 
 reactor.createRule("exists1",0,{person: Person},
 	function(person) {
@@ -50,7 +52,7 @@ reactor.createRule("exists2",-1,{h: Home},
 		reactor.stop();
 	});
 
-reactor.trace(3);
+
 
 var p = new Person("joe");
 reactor.assert(p);

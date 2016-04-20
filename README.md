@@ -4,13 +4,13 @@ A light weight, fast, expressive forward chaining business rule engine leveragin
 
 All rule conditions and actions are expressed as regular JavaScript functions so a JavaScript debugger can be fully utilized for debugging RuleReactor applications.
 
-At 24K (11K minified) vs 577K (227K minified) for Nools, a comparable speed for many applications, plus a low memory impact pattern and join processor, rule-reactor is perfect for memory constrained apps like those on mobile devices.
+At 45K (21K minified) vs 577K (227K minified) for Nools, a comparable speed for many applications, plus a low memory impact pattern and join processor, rule-reactor is perfect for memory constrained apps like those on mobile devices.
 
 # Install
 
 npm install rule-reactor
 
-The index.js and package.json files are compatible with https://github.com/anywhichway/node-require so that rule-reactor can be served directly to the browser from the node-modules/jovial directory when using node Express.
+The index.js and package.json files are compatible with https://github.com/anywhichway/node-require so that rule-reactor can be served directly to the browser from the node-modules/rule-reactor directory when using node Express.
 
 Browser code can also be found in the browser directory at https://github.com/anywhichway/rule-reactor.
 
@@ -20,7 +20,7 @@ There is an intro at: http://anywhichway.github.io/rule-reactor.html
 
 ## Basic Use
 
-For this example, we will use code from the patient.html example in the examples directory available on GitHub or via an installed npm package.
+For this example, we will use code from the patient.html file in the examples directory available on GitHub or via an installed npm package.
 
 There is only one constructor most developers will need to interact with, RuleReactor.
 
@@ -264,11 +264,15 @@ For code quality assessment purposes, the cyclomatic complexity threshold is set
 
 # Notes
 
-v0.0.15 There seem to be some cases where existential patterns are not behaving the same way as equivalent test functions.
 
 # Updates (reverse chronological order)
 
 Currently BETA
+
+2016-04020 v0.0.16 
+
+* Performance optimizations
+* Removal of unused code
 
 2016-04-11	 v0.0.15
 

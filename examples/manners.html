@@ -9,14 +9,6 @@
 // The original source for the OPS5 benchmark suite is available
 // at http://www.cs.utexas.edu/ftp/pub/ops5-benchmark-suite/
 
-
-var reactor = new RuleReactor(true);
-reactor.trace(0);
-function not() { return reactor.not.apply(reactor,arguments); }
-function assert() { return reactor.assert.apply(reactor,arguments); }
-function retract() { return reactor.retract.apply(reactor,arguments); }
-function exists() { return reactor.exists.apply(reactor,arguments); }
-
 function Guest(name,sex,hobby) {
 	this.name=name;
 	this.sex=sex;
@@ -51,6 +43,14 @@ function Chosen(id,name,hobby) {
 function Count(c) {
 	this.c=c;
 }
+
+var reactor = new RuleReactor({},true);
+reactor.trace(0);
+function not() { return reactor.not.apply(reactor,arguments); }
+function assert() { return reactor.assert.apply(reactor,arguments); }
+function retract() { return reactor.retract.apply(reactor,arguments); }
+function exists() { return reactor.exists.apply(reactor,arguments); }
+
 
 reactor.createRule("assignFirstSeat",0,{context: Context, guest: Guest, count: Count},
 	function(context,guest,count) {

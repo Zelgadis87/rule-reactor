@@ -4,12 +4,13 @@ if(typeof(window)==="undefined") {
 	RuleReactor = require('../index.js');
 }
 
-describe('reactor ', function() {
+describe('rule-reactor ', function() {
 	it('should support normal matching',function() {
 		function  TestObject(value) {
 			this.value = value;
 		};
 		var reactor = new RuleReactor();
+		reactor.trace(3);
 		var to = new TestObject("test");
 		var rule = reactor.createRule("test",0,{t: TestObject},
 				function(t) {
@@ -20,7 +21,7 @@ describe('reactor ', function() {
 				}
 		);
 		rule.bind(to);
-		var result = rule.test(to);		
+		var result = rule.test(to);
 		expect(result).to.equal(true);
 		rule.delete();
 	});
@@ -36,7 +37,7 @@ describe('reactor ', function() {
 				}
 		);
 		rule.bind(to);
-		var result = rule.test(to);		
+		var result = rule.test(to);
 		expect(result).to.equal(true);
 		rule.delete();
 	});
@@ -52,7 +53,7 @@ describe('reactor ', function() {
 					;
 				}
 		);
-		var result = rule.test();		
+		var result = rule.test();
 		expect(result).to.equal(true);
 		rule.delete();
 	});
@@ -68,7 +69,7 @@ describe('reactor ', function() {
 					;
 				}
 		);
-		var result = rule.test();		
+		var result = rule.test();
 		expect(result).to.equal(true);
 		rule.delete();
 	});
@@ -84,7 +85,7 @@ describe('reactor ', function() {
 					;
 				}
 		);
-		var result = rule.test();		
+		var result = rule.test();
 		expect(result).to.equal(true);
 		rule.delete();
 	});
@@ -106,7 +107,7 @@ describe('reactor ', function() {
 				}
 		);
 		rule.bind(to);
-		var result = rule.test();		
+		var result = rule.test();
 		expect(result).to.equal(true);
 		rule.delete();
 	});
