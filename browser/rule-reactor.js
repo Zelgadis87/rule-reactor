@@ -38,8 +38,8 @@ var uuid = require("uuid");
 		}
 		var size = 1;
 		this.collections.forEach(function(collection) { size *= collection.length; });
-		if(me.start!==undefined) {
-			if(me.end!=undefined) {
+		if(typeof(me.start)==="number") {
+			if(typeof(me.end)==="number") {
 				return me.end - me.start;
 			}
 			return size - me.start;
@@ -49,17 +49,17 @@ var uuid = require("uuid");
 	CXProduct.prototype.length.size = CXProduct.prototype.length;
 	CXProduct.prototype.every = function(callback,pattern) {
 		function dive(cxproduct,d,counter,collections,lens,p,callback,pattern){
-			var a=collections[d], max=collections.length-1,len=lens[d],params;
+			var a=collections[d], max=collections.length-1,len=lens[d];
 			if (d===max) {
 				for (var i=0;i<len;++i) { 
 					p[d]=a[i]; 
 					if(!callback(p.slice(0),counter.count)) {
 						return false;
-					}; 
+					}
 					counter.count++;
 				}
 			} else {
-				for (var j=0;i<len;++j) {
+				for (var j=0;j<len;++j) {
 					p[d]=a[j];
 					dive(cxproduct,d+1,counter,collections,lens,p,callback,pattern);
 				}
@@ -70,17 +70,17 @@ var uuid = require("uuid");
 			return this.some2(callback,pattern,test);
 		}
 		var me = this, p=[],lens=[];
-		for (var i=me.collections.length;i--;) lens[i]=me.collections[i].length;
+		for (var i=me.collections.length;i--;) { lens[i]=me.collections[i].length; }
 		if(dive(me,0,{count:0},me.collections,lens,p,callback,pattern)!==false) {
 			return true;
 		}
 	}
 	CXProduct.prototype.get = function(index,pattern){
 		function get(n,collections,dm,c) {
-			for (var i=collections.length;i--;)c[i]=collections[i][(n/dm[i][0]<<0)%dm[i][1]];
+			for (var i=collections.length;i--;) { c[i]=collections[i][(n/dm[i][0]<<0)%dm[i][1]]; }
 		}
 		var me = this, dm = [], c = [];
-		for (var f=1,l,i=me.collections.length;i--;f*=l){ dm[i]=[f,l=me.collections[i].length];  }
+		for (var f=1,l,i=me.collections.length;i--;f*=l) { dm[i]=[f,l=me.collections[i].length];  }
 		if(index>=me.length()) {
 			return undefined;
 		}
@@ -93,7 +93,7 @@ var uuid = require("uuid");
 	}
 	CXProduct.prototype.some = function(callback,pattern) {
 		function dive(cxproduct,d,counter,collections,lens,p,callback,pattern){
-			var a=collections[d], max=collections.length-1,len=lens[d],results=[],params;
+			var a=collections[d], max=collections.length-1,len=lens[d],params;
 			if (d===max) {
 				for (var i=0;i<len;++i) { 
 					p[d]=a[i]; 
@@ -103,8 +103,8 @@ var uuid = require("uuid");
 					counter.count++;
 				}
 			} else {
-				for (var i=0;i<len;++i) {
-					p[d]=a[i];
+				for (var j=0;j<len;++j) {
+					p[d]=a[j];
 					dive(cxproduct,d+1,counter,collections,lens,p,callback,pattern);
 				}
 			}
@@ -114,14 +114,14 @@ var uuid = require("uuid");
 			return this.some2(callback,pattern,test);
 		}
 		var me = this, p=[],lens=[];
-		for (var i=me.collections.length;i--;) lens[i]=me.collections[i].length;
+		for (var i=me.collections.length;i--;) { lens[i]=me.collections[i].length; }
 		return dive(me,0,{count:0},me.collections,lens,p,callback,pattern);
 	}
 	CXProduct.prototype.some2 = function(callback,pattern) {
 		var me = this, i = 0, value, max = me.length();
 		do {
 			value = me.get(i);
-			if(value!==undefined && (!callback || callback(value)) && (!pattern || me.testpattern(pattern,value))) {
+			if(tyepof(value)!=="undefined" && (!callback || callback(value)) && (!pattern || me.testpattern(pattern,value))) {
 				return true;
 			}
 			i++;
@@ -143,8 +143,8 @@ var uuid = require("uuid");
 					counter.count++;
 				}
 			} else {
-				for (var i=0;i<len;++i) {
-					p[d]=a[i];
+				for (var j=0;j<len;++j) {
+					p[d]=a[j];
 					dive(cxproduct,d+1,counter,collections,lens,p,callback,pattern);
 				}
 			}
@@ -155,14 +155,14 @@ var uuid = require("uuid");
 			return;
 		}
 		var me = this, p=[],lens=[];
-		for (var i=me.collections.length;i--;) lens[i]=me.collections[i].length;
+		for (var i=me.collections.length;i--;) { lens[i]=me.collections[i].length; }
 		dive(me,0,{count:0},me.collections,lens,p,callback,pattern);
 	}
 	CXProduct.prototype.forEach2 = function(callback,pattern) {
 		var me = this, i = (typeof(me.start)==="number" ? me.start : 0), max = (typeof(me.end)==="number" ? me.end : me.length());
 		while(i<max) {
 			var value = me.get(i);
-			if(value!==undefined) {
+			if(tyepof(value)!=="undefined") {
 				callback(value);
 			}
 			i++;
@@ -230,7 +230,7 @@ var uuid = require("uuid");
 						return match;
 					}
 				);
-			})
+			});
 		});
 		if(variables.length>0) {
 			rule.triggers.push({domain:rule.domain,range:rule.range});
@@ -410,7 +410,7 @@ var uuid = require("uuid");
 			}
 			var activations = me.rule.activations.get(instance);
 			if(activations) {
-				var i = activations.indexOf(me);
+				i = activations.indexOf(me);
 				if(i>=0) {
 					activations.splice(i,1);
 					if(activations.length===0) {
@@ -418,7 +418,7 @@ var uuid = require("uuid");
 					}
 				}
 			}
-			if(index!==undefined) {
+			if(typeof(index)!=="undefined") {
 				if(index===me.rule.reactor.agenda.length-1) {
 					me.rule.reactor.agenda.pop();
 					return;
@@ -500,7 +500,6 @@ var uuid = require("uuid");
 		this.compiledAction(match);
 	}
 	Rule.prototype.test = function(instance,key) {
-		function yieldtime() { };
 		var me = this, variables = Object.keys(me.domain), result = false, values = []
 		if(!variables.every(function(variable) {
 			values.push(me.bindings[variable]);
@@ -536,9 +535,8 @@ var uuid = require("uuid");
 		} else {
 			me.potentialMatches = Math.max(me.potentialMatches,me.cxproduct.length());
 			if(instance) {
-				var passed = false;
 				variables.forEach(function(variable,i) {
-					var collections = me.cxproduct.collections.slice(0), promises = [];
+					var collections = me.cxproduct.collections.slice(0);
 					if(instance instanceof me.domain[variable]) {
 						collections[i] = [instance];
 						var cxproduct = new CXProduct(collections);
@@ -602,14 +600,14 @@ var uuid = require("uuid");
 			index[key] = (index[key] ? index[key] : {});
 			var value = instance[key], type = typeof(value), valuekey, typekey;
 			if(type==="object" && value) {
-				if(value.__rrid__===undefined) {
+				if(typeof(value.__rrid__)==="undefined") {
 					Object.defineProperty(value,"__rrid__",{value:uuid.v4()});
 				}
 				valuekey = value.constructor.name + "@" + value.__rrid__;
 			} else {
 				valuekey = value;
 			}
-			if(value===null || value===undefined) {
+			if(value===null || typeof(value)==="undefined") {
 				typekey = "undefined";
 			} else {
 				typekey = type;
@@ -620,7 +618,7 @@ var uuid = require("uuid");
 		});
 	}
 	function updateIndex(index,instance,key,oldValue) {
-		if(instance[key]===undefined && !index[key]) return;
+		if(instance[key]===undefined && !index[key]) { return; }
 		index[key] = (index[key] ? index[key] : {});
 		var value = instance[key], type = typeof(value), oldtype = typeof(oldValue), oldvaluekey, oldtypekey, valuekey, typekey;
 		if(type==="object" && value) {
@@ -660,11 +658,11 @@ var uuid = require("uuid");
 	}
 	function matchObject(index,instance,parentkeys,parentinstances) {
 		if(!index) { return false; }
-		var parentkeys = (parentkeys ? parentkeys : []), 
-			parentinstances = (parentinstances ? parentinstances : []),
-			keys = Object.keys(instance);
+		var	keys = Object.keys(instance);
+		parentkeys = (parentkeys ? parentkeys : []);
+		parentinstances = (parentinstances ? parentinstances : []);
 		return keys.every(function(key) {
-			if(!index[key]) return false;
+			if(!index[key]) { return false; }
 			var value = instance[key], type = typeof(value), valuekey, typekey;
 			if(type==="object" && value) {
 				if(parentkeys.indexOf(key)>=0 && parentkeys.indexOf(key)===parentinstances.indexOf(value)) {
@@ -694,7 +692,7 @@ var uuid = require("uuid");
 			}
 			if(!index[key][valuekey]) return false;
 			if(!index[key][valuekey][typekey]) return false;
-			if(instance.__rrid__ && !index[key][valuekey][typekey][instance.__rrid__]) return false;
+			if(instance.__rrid__ && !index[key][valuekey][typekey][instance.__rrid__]){  return false; }
 			return true;
 		});
 	}
