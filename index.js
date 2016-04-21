@@ -25,61 +25,6 @@ var uuid = require("uuid");
 (function() {
 	"use strict";
 	
-	function intersection(array) {
-		var arrays = arguments.length;
-		// fast path when we have nothing to intersect
-		if (arrays === 0) {
-			return [];
-		}
-		if (arrays === 1) {
-			return intersection(array,array);
-		}
-		 
-		var arg   = 0, // current arg index
-				bits  = 0, // bits to compare at the end
-				count = 0, // unique item count
-				items = [], // unique items
-				match = [], // item bits
-				seen  = new Map(); // item -> index map
-		 
-		do {
-			var arr = arguments[arg],
-					len = arr.length,
-					bit = 1 << arg, // each array is assigned a bit
-					i   = 0;
-		 
-			if (!len) {
-				return []; // bail out if empty array
-			}
-		 
-			bits |= bit; // add the bit to the collected bits
-			do {
-				var value = arr[i],
-						index = seen.get(value); // find existing item index
-		 
-				if (index === undefined) { // new item
-					count++;
-					index = match.length;
-					seen.set(value, index);
-					items[index] = (value ? value.valueOf() : value)
-				} else { // update existing item
-					match[index] |= bit;
-				}
-			} while (++i < len);
-		} while (++arg < arrays);
-		 
-			var result = [],
-			i = 0;
-		 
-		do { // filter out items that don't have the full bitfield
-			if (match[i] === bits) {
-				result[result.length] = items[i];
-			}
-		} while (++i < count);
-		 
-			return result;
-	}
-
 //		portions from http://phrogz.net/lazy-cartesian-product
 	function CXProduct(collections){
 		var me = this;
@@ -92,7 +37,7 @@ var uuid = require("uuid");
 		}
 		var size = 1;
 		this.collections.forEach(function(collection) { size *= collection.length; });
-		if(me.start!=undefined) {
+		if(me.start!==undefined) {
 			if(me.end!=undefined) {
 				return me.end - me.start;
 			}
@@ -103,7 +48,7 @@ var uuid = require("uuid");
 	CXProduct.prototype.length.size = CXProduct.prototype.length;
 	CXProduct.prototype.every = function(callback,pattern) {
 		function dive(cxproduct,d,counter,collections,lens,p,callback,pattern){
-			var a=collections[d], max=collections.length-1,len=lens[d],results=[],params;
+			var a=collections[d], max=collections.length-1,len=lens[d],params;
 			if (d===max) {
 				for (var i=0;i<len;++i) { 
 					p[d]=a[i]; 
@@ -113,8 +58,8 @@ var uuid = require("uuid");
 					counter.count++;
 				}
 			} else {
-				for (var i=0;i<len;++i) {
-					p[d]=a[i];
+				for (var j=0;i<len;++j) {
+					p[d]=a[j];
 					dive(cxproduct,d+1,counter,collections,lens,p,callback,pattern);
 				}
 			}
@@ -129,25 +74,12 @@ var uuid = require("uuid");
 			return true;
 		}
 	}
-	CXProduct.prototype.every2 = function(callback,pattern) {
-		var me = this, i = 0, max = me.length();
-		do {
-			var value = me.get(i);
-			if(value!==undefined) {
-				if((!callback || callback(value)) && (!pattern || me.testpattern(pattern,value))) {
-					return false;
-				};
-			}
-			i++;
-		} while(value!==undefined && i<max); 
-		return true;
-	}
 	CXProduct.prototype.get = function(index,pattern){
 		function get(n,collections,dm,c) {
-			for (var i=collections.length;i--;)c[i]=collections[i][(n/dm[i][0]<<0)%dm[i][1]];
+			for (var i=collections.length;i--;) { c[i]=collections[i][(n/dm[i][0]<<0)%dm[i][1]] };
 		}
-		var me = this, c = [];
-		for (var dm=[],f=1,l,i=me.collections.length;i--;f*=l){ dm[i]=[f,l=me.collections[i].length];  }
+		var me = this, dm = [], c = [];
+		for (var f=1,l,i=me.collections.length;i--;f*=l) { dm[i]=[f,l=me.collections[i].length];  }
 		if(index>=me.length()) {
 			return undefined;
 		}
@@ -181,14 +113,14 @@ var uuid = require("uuid");
 			return this.some2(callback,pattern,test);
 		}
 		var me = this, p=[],lens=[];
-		for (var i=me.collections.length;i--;) lens[i]=me.collections[i].length;
+		for (var i=me.collections.length;i--;) { lens[i]=me.collections[i].length; }
 		return dive(me,0,{count:0},me.collections,lens,p,callback,pattern);
 	}
 	CXProduct.prototype.some2 = function(callback,pattern) {
 		var me = this, i = 0, value, max = me.length();
 		do {
 			value = me.get(i);
-			if(value!=undefined && (!callback || callback(value)) && (!pattern || me.testpattern(pattern,value))) {
+			if(value!==undefined && (!callback || callback(value)) && (!pattern || me.testpattern(pattern,value))) {
 				return true;
 			}
 			i++;
@@ -222,7 +154,7 @@ var uuid = require("uuid");
 			return;
 		}
 		var me = this, p=[],lens=[];
-		for (var i=me.collections.length;i--;) lens[i]=me.collections[i].length;
+		for (var i=me.collections.length;i--;) { lens[i]=me.collections[i].length; }
 		dive(me,0,{count:0},me.collections,lens,p,callback,pattern);
 	}
 	CXProduct.prototype.forEach2 = function(callback,pattern) {
@@ -283,7 +215,7 @@ var uuid = require("uuid");
 			rule.range[variable] = {};
 			rule.bindings[variable] = (rule.bindings[variable] ? rule.bindings[variable] : []);
 			// extract instance keys from condition using a side-effect of replace
-			rule.conditions.forEach(function(condition,cnum) {
+			rule.conditions.forEach(function(condition) {
 				(condition+"").replace(new RegExp("(\\b"+variable+"\\.\\w+\\b)","g"),
 					function(match) { 
 						var parts = match.split("."),key = parts[1];
@@ -302,7 +234,7 @@ var uuid = require("uuid");
 		if(variables.length>0) {
 			rule.triggers.push({domain:rule.domain,range:rule.range});
 		}
-		rule.conditions.forEach(function(condition,cnum) {
+		rule.conditions.forEach(function(condition) {
 			(condition+"").replace(/exists\(\s*(\s*{.*\s*})\s*,\s*(.*)\s*\)/g,
 				function(match,domainstr,conditionstr) {
 					var domain = new Function("return " + domainstr)(), variables = Object.keys(domain);
@@ -470,7 +402,7 @@ var uuid = require("uuid");
 		}
 	}
 	Activation.prototype.delete = function(instance,index,supresslog) {
-		var me = this;
+		var me = this, i;
 		if(!instance || me.match.indexOf(instance)>=0) {
 			if(!supresslog && me.rule.reactor.tracelevel>1) {
 				Console.log("Deactivating: ",me.rule,me.match);
@@ -485,7 +417,7 @@ var uuid = require("uuid");
 					}
 				}
 			}
-			if(index!=undefined) {
+			if(index!==undefined) {
 				if(index===me.rule.reactor.agenda.length-1) {
 					me.rule.reactor.agenda.pop();
 					return;
@@ -493,7 +425,7 @@ var uuid = require("uuid");
 				me.rule.reactor.agenda.splice(index,1);
 				return;
 			}
-			var i = me.rule.reactor.agenda.indexOf(me);
+			i = me.rule.reactor.agenda.indexOf(me);
 			if(i>=0) {
 				me.rule.reactor.agenda.splice(i,1);
 			}
@@ -567,7 +499,6 @@ var uuid = require("uuid");
 		this.compiledAction(match);
 	}
 	Rule.prototype.test = function(instance,key) {
-		function yieldtime() { };
 		var me = this, variables = Object.keys(me.domain), result = false, values = []
 		if(!variables.every(function(variable) {
 			values.push(me.bindings[variable]);

@@ -50,10 +50,10 @@ Now define rules. Below are two examples.
 
 ```
 reactor.createRule("Measles",0,{p: Patient},
-	function(p1) {
-		return p1.fever=="high" && p1.spots==true && p1.innoculated==false;
+	function(p) {
+		return p.fever=="high" && p.spots==true && p.innoculated==false;
 	},
-	function(p1) {
+	function(p) {
 		p1.diagnosis = new Diagnosis("measles","High temp, spots, and no innoculation for measles.");
 	});
 	
@@ -269,7 +269,12 @@ For code quality assessment purposes, the cyclomatic complexity threshold is set
 
 Currently BETA
 
-2016-04020 v0.0.16 
+2016-04-24 v0.0.17 
+
+* Corrected some documentation errors
+* Codacy and CodeClimate driven style quality improvements
+
+2016-04-20 v0.0.16 
 
 * Performance optimizations
 * Removal of unused code

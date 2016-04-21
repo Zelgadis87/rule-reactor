@@ -1,14 +1,14 @@
 var expect, RuleReactor;
 if(typeof(window)==="undefined") {
 	expect = require("chai").expect;
-	RuleReactor = require('../index.js');
+	RuleReactor = require("../index.js");
 }
 
-describe('rule-reactor ', function() {
-	it('should support normal matching',function() {
+describe("rule-reactor ", function() {
+	it("should support normal matching",function() {
 		function  TestObject(value) {
 			this.value = value;
-		};
+		}
 		var reactor = new RuleReactor();
 		reactor.trace(3);
 		var to = new TestObject("test");
@@ -16,8 +16,8 @@ describe('rule-reactor ', function() {
 				function(t) {
 					return t.value == "test";
 				},
-				function(t) {
-					;
+				function() {
+					
 				}
 		);
 		rule.bind(to);
@@ -25,7 +25,7 @@ describe('rule-reactor ', function() {
 		expect(result).to.equal(true);
 		rule.delete();
 	});
-	it('should support primtive object matching',function() {
+	it("should support primtive object matching",function() {
 		var reactor = new RuleReactor();
 		var to = new Number(1);
 		var rule = reactor.createRule("test",0,{t: Number},
@@ -41,7 +41,7 @@ describe('rule-reactor ', function() {
 		expect(result).to.equal(true);
 		rule.delete();
 	});
-	it('should support existential tests',function() {
+	it("should support existential tests",function() {
 		var reactor = new RuleReactor();
 		var to = new Number(1);
 		reactor.assert(to);
@@ -57,7 +57,7 @@ describe('rule-reactor ', function() {
 		expect(result).to.equal(true);
 		rule.delete();
 	});
-	it('should support universal tests',function() {
+	it("should support universal tests",function() {
 		var reactor = new RuleReactor();
 		var to = new Number(1);
 		reactor.assert(to);
@@ -73,7 +73,7 @@ describe('rule-reactor ', function() {
 		expect(result).to.equal(true);
 		rule.delete();
 	});
-	it('should support negation tests',function() {
+	it("should support negation tests",function() {
 		var reactor = new RuleReactor();
 		var to = new Number(1);
 		reactor.assert(to);
@@ -89,7 +89,7 @@ describe('rule-reactor ', function() {
 		expect(result).to.equal(true);
 		rule.delete();
 	});
-	it('should support array of conditions',function() {
+	it("should support array of conditions",function() {
 		var reactor = new RuleReactor();
 		var to = new Number(1);
 		reactor.assert(to);
@@ -111,7 +111,7 @@ describe('rule-reactor ', function() {
 		expect(result).to.equal(true);
 		rule.delete();
 	});
-	it('should order by salience',function() {
+	it("should order by salience",function() {
 		var reactor = new RuleReactor();
 		var to = new Number(1);
 		var rule1 = reactor.createRule("rule one",1,{t1:Number},
@@ -135,7 +135,7 @@ describe('rule-reactor ', function() {
 		rule1.delete();
 		rule2.delete();
 	});
-	it('should support rule reset',function() {
+	it("should support rule reset",function() {
 		var reactor = new RuleReactor();
 		var to = new Number(1);
 		var rule = reactor.createRule("rule",1,{t1:Number},
@@ -152,7 +152,7 @@ describe('rule-reactor ', function() {
 		expect(reactor.agenda.length).to.equal(0);
 		rule.delete();
 	});
-	it('should throw TypeError when condition does not contain return',function() {
+	it("should throw TypeError when condition does not contain return",function() {
 		var reactor = new RuleReactor();
 		var to = new Number(1);
 		var result, rule;
@@ -173,7 +173,7 @@ describe('rule-reactor ', function() {
 			rule.delete();
 		}
 	});
-	it('should throw TypeError when every does not contain return',function() {
+	it("should throw TypeError when every does not contain return",function() {
 		var reactor = new RuleReactor();
 		var to = new Number(1);
 		var result, rule;
@@ -194,7 +194,7 @@ describe('rule-reactor ', function() {
 			rule.delete();
 		}
 	});
-	it('should throw TypeError when exists does not contain return',function() {
+	it("should throw TypeError when exists does not contain return",function() {
 		var reactor = new RuleReactor();
 		var to = new Number(1);
 		var result, rule;
@@ -215,17 +215,17 @@ describe('rule-reactor ', function() {
 			rule.delete();
 		}
 	});
-	it('should throw ReferenceError when undeclared variable encountered in condition',function() {
+	it("should throw ReferenceError when undeclared variable encountered in condition",function() {
 		var reactor = new RuleReactor();
 		var to = new Number(1);
 		var result, rule;
 		try {
 			rule = reactor.createRule("rule",1,{},
 					function(t1) {
-						return t1==1
+						return t1==1;
 					},
 					function() {
-						;
+						
 					}
 			);
 		} catch(e) {
@@ -236,7 +236,7 @@ describe('rule-reactor ', function() {
 			rule.delete();
 		}
 	});
-	it('should throw ReferenceError when undeclared variable encountered in action',function() {
+	it("should throw ReferenceError when undeclared variable encountered in action",function() {
 		var reactor = new RuleReactor();
 		var to = new Number(1);
 		var result, rule;
@@ -257,7 +257,7 @@ describe('rule-reactor ', function() {
 			rule.delete();
 		}
 	});
-	it('should throw TypeError when domain is not a function',function() {
+	it("should throw TypeError when domain is not a function",function() {
 		var reactor = new RuleReactor();
 		var to = new Number(1);
 		var result, rule;
@@ -278,7 +278,7 @@ describe('rule-reactor ', function() {
 			rule.delete();
 		}
 	});
-	it('should throw TypeError when salience is not a number',function() {
+	it("should throw TypeError when salience is not a number",function() {
 		var reactor = new RuleReactor();
 		var to = new Number(1);
 		var result, rule;
@@ -299,17 +299,17 @@ describe('rule-reactor ', function() {
 			rule.delete();
 		}
 	});
-	it('should throw TypeError when domain is not an object',function() {
+	it("should throw TypeError when domain is not an object",function() {
 		var reactor = new RuleReactor();
 		var to = new Number(1);
 		var result, rule;
 		try {
 			rule = reactor.createRule("rule",0,null,
 					function(t1) {
-						return t1==1
+						return t1==1;
 					},
 					function() {
-						;
+						
 					}
 			);
 		} catch(e) {
@@ -320,7 +320,7 @@ describe('rule-reactor ', function() {
 			rule.delete();
 		}
 	});
-	it('should throw TypeError when action is not a function',function() {
+	it("should throw TypeError when action is not a function",function() {
 		var reactor = new RuleReactor();
 		var to = new Number(1);
 		var result, rule;
