@@ -110,7 +110,7 @@ var uuid = require("uuid");
 			p.pop();
 		}
 		if(typeof(start)==="number") {
-			return this.some2(callback,pattern,test);
+			return this.some2(callback,pattern);
 		}
 		var me = this, p=[],lens=[];
 		for (var i=me.collections.length;i--;) { lens[i]=me.collections[i].length; }
@@ -150,7 +150,7 @@ var uuid = require("uuid");
 			p.pop();
 		}
 		if(typeof(start)==="number") {
-			this.forEach2(callback,pattern);
+			this.forEach2(callback);
 			return;
 		}
 		var me = this, p=[],lens=[];
@@ -319,7 +319,7 @@ var uuid = require("uuid");
 					var reactor = this, args = [];
 					// no required = domainless
 					if(!condition.required || condition.required.every(function(i) {
-						if(match[i]!==undefined) {
+						if(typeof(match[i])!=="undefined") {
 							return args.push(match[i]);
 						}
 					})) {
@@ -348,7 +348,7 @@ var uuid = require("uuid");
 			var reactor = this, args = [];
 			// no required = domainless
 			if(!rule.action.required || rule.action.required.every(function(i) {
-				if(match[i]!==undefined) {
+				if(typeof(match[i])!=="undefined") {
 					return args.push(match[i]);
 				}
 			})) {
@@ -522,7 +522,7 @@ var uuid = require("uuid");
 				new Activation(me,match,i,me.cxproduct,instance);
 				result = true;
 				return true;
-			};
+			}
 		}
 		if(variables.length===0) {
 			if(test()) {
@@ -617,7 +617,7 @@ var uuid = require("uuid");
 		});
 	}
 	function updateIndex(index,instance,key,oldValue) {
-		if(instance[key]===undefined && !index[key]) { return; }
+		if(typeof(instance[key])==="undefined" && !index[key]) { return; }
 		index[key] = (index[key] ? index[key] : {});
 		var value = instance[key], type = typeof(value), oldtype = typeof(oldValue), oldvaluekey, oldtypekey, valuekey, typekey;
 		if(type==="object" && value) {
@@ -628,7 +628,7 @@ var uuid = require("uuid");
 		} else {
 			valuekey = value;
 		}
-		if(value===null || value===undefined) {
+		if(value===null || typeof(value)==="undefined") {
 			typekey = "undefined";
 		} else {
 			typekey = type;
@@ -638,7 +638,7 @@ var uuid = require("uuid");
 		} else {
 			oldvaluekey = oldValue;
 		}
-		if(value===null || value===undefined) {
+		if(value===null || typeof(value)==="undefined") {
 			typekey = "undefined";
 		} else {
 			typekey = type;
@@ -684,7 +684,7 @@ var uuid = require("uuid");
 			} else {
 				valuekey = value;
 			}
-			if(value===null || value===undefined) {
+			if(value===null || typeof(value)==="undefined") {
 				typekey = "undefined";
 			} else {
 				typekey = type;
@@ -903,7 +903,7 @@ var uuid = require("uuid");
 		}
 		return test.cxproduct.every(function(row) {
 			var args = [];
-			if(!test.required || test.required.every(function(index) { args.push(row[index]); return row[index]!==undefined; })) {
+			if(!test.required || test.required.every(function(index) { args.push(row[index]); return typeof(row[index])!=="undefined"; })) {
 				return test.apply(null,args);
 			}
 		});
@@ -949,7 +949,7 @@ var uuid = require("uuid");
 		}
 		return test.cxproduct.some(function(row) {
 			var args = [];
-			if(!test.required || test.required.every(function(index) { args.push(row[index]); return row[index]!==undefined; })) {
+			if(!test.required || test.required.every(function(index) { args.push(row[index]); return typeof(row[index])!=="undefined"; })) {
 				return test.apply(null,args);
 			}
 		});
