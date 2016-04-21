@@ -66,7 +66,7 @@ var uuid = require("uuid");
 			p.pop();
 		}
 		if(typeof(start)==="number") {
-			return this.some2(callback,pattern,test);
+			return this.some2(callback,pattern);
 		}
 		var me = this, p=[],lens=[];
 		for (var i=me.collections.length;i--;) { lens[i]=me.collections[i].length; }
@@ -81,24 +81,24 @@ var uuid = require("uuid");
 		var me = this, dm = [], c = [];
 		for (var f=1,l,i=me.collections.length;i--;f*=l) { dm[i]=[f,l=me.collections[i].length];  }
 		if(index>=me.length()) {
-			return undefined;
+			return; // undefined
 		}
 		get(index,me.collections,dm,c);
 		if(!pattern || pattern.every(function(value,i) {
-			return value===undefined || (typeof(value)==="function" ? value.call(c,c[i],i) : false) || c[i]===value;
+			return typeof(value)==="undefined" || (typeof(value)==="function" ? value.call(c,c[i],i) : false) || c[i]===value;
 		})) {
 			return c.slice(0);
 		}
 	}
 	CXProduct.prototype.some = function(callback,pattern) {
 		function dive(cxproduct,d,counter,collections,lens,p,callback,pattern){
-			var a=collections[d], max=collections.length-1,len=lens[d],params;
+			var a=collections[d], max=collections.length-1,len=lens[d];
 			if (d===max) {
 				for (var i=0;i<len;++i) { 
 					p[d]=a[i]; 
 					if(callback(p.slice(0),counter.count)) {
 						return true;
-					}; 
+					}
 					counter.count++;
 				}
 			} else {
@@ -120,7 +120,7 @@ var uuid = require("uuid");
 		var me = this, i = 0, value, max = me.length();
 		do {
 			value = me.get(i);
-			if(tyepof(value)!=="undefined" && (!callback || callback(value)) && (!pattern || me.testpattern(pattern,value))) {
+			if(typeof(value)!=="undefined" && (!callback || callback(value)) && (!pattern || me.testpattern(pattern,value))) {
 				return true;
 			}
 			i++;
@@ -132,9 +132,9 @@ var uuid = require("uuid");
 		var match = me.get(i);
 		return match && match.every(function(element,i) { return element===row[i]; });
 	}
-	CXProduct.prototype.forEach1 = function(callback,pattern) {
-		function dive(cxproduct,d,counter,collections,lens,p,callback,pattern){
-			var a=collections[d], max=collections.length-1,len=lens[d],results=[],params;
+	CXProduct.prototype.forEach1 = function(callback) {
+		function dive(cxproduct,d,counter,collections,lens,p,callback){
+			var a=collections[d], max=collections.length-1,len=lens[d];
 			if (d===max) {
 				for (var i=0;i<len;++i) { 
 					p[d]=a[i]; 
@@ -144,24 +144,24 @@ var uuid = require("uuid");
 			} else {
 				for (var j=0;j<len;++j) {
 					p[d]=a[j];
-					dive(cxproduct,d+1,counter,collections,lens,p,callback,pattern);
+					dive(cxproduct,d+1,counter,collections,lens,p,callback);
 				}
 			}
 			p.pop();
 		}
 		if(typeof(start)==="number") {
-			this.forEach2(callback,pattern,test);
+			this.forEach2(callback,pattern);
 			return;
 		}
 		var me = this, p=[],lens=[];
 		for (var i=me.collections.length;i--;) { lens[i]=me.collections[i].length; }
-		dive(me,0,{count:0},me.collections,lens,p,callback,pattern);
+		dive(me,0,{count:0},me.collections,lens,p,callback);
 	}
-	CXProduct.prototype.forEach2 = function(callback,pattern) {
+	CXProduct.prototype.forEach2 = function(callback) {
 		var me = this, i = (typeof(me.start)==="number" ? me.start : 0), max = (typeof(me.end)==="number" ? me.end : me.length());
 		while(i<max) {
 			var value = me.get(i);
-			if(tyepof(value)!=="undefined") {
+			if(typeof(value)!=="undefined") {
 				callback(value);
 			}
 			i++;
@@ -499,7 +499,7 @@ var uuid = require("uuid");
 		this.compiledAction(match);
 	}
 	Rule.prototype.test = function(instance,key) {
-		var me = this, variables = Object.keys(me.domain), result = false, values = []
+		var me = this, variables = Object.keys(me.domain), result = false, values = [];
 		if(!variables.every(function(variable) {
 			values.push(me.bindings[variable]);
 			return me.bindings[variable].length>0;
@@ -621,7 +621,7 @@ var uuid = require("uuid");
 		index[key] = (index[key] ? index[key] : {});
 		var value = instance[key], type = typeof(value), oldtype = typeof(oldValue), oldvaluekey, oldtypekey, valuekey, typekey;
 		if(type==="object" && value) {
-			if(value.__rrid__===undefined) {
+			if(typeof(value.__rrid__)==="undefined") {
 				Object.defineProperty(value,"__rrid__",{value:uuid.v4()});
 			}
 			valuekey = value.constructor.name + "@" + value.__rrid__;
@@ -643,7 +643,7 @@ var uuid = require("uuid");
 		} else {
 			typekey = type;
 		}
-		if(oldValue===null || oldValue===undefined) {
+		if(oldValue===null || typeof(oldValue)==="undefined") {
 			oldtypekey = "undefined";
 		} else {
 			oldtypekey = oldtype;
@@ -689,8 +689,8 @@ var uuid = require("uuid");
 			} else {
 				typekey = type;
 			}
-			if(!index[key][valuekey]) return false;
-			if(!index[key][valuekey][typekey]) return false;
+			if(!index[key][valuekey]) { return false; }
+			if(!index[key][valuekey][typekey]) { return false; }
 			if(instance.__rrid__ && !index[key][valuekey][typekey][instance.__rrid__]){  return false; }
 			return true;
 		});
@@ -706,7 +706,7 @@ var uuid = require("uuid");
 		this.run.executions = 0;
 		this.domain = (domain ? domain : {});
 	}
-	RuleReactor.prototype.assert = function(instances,callback,timeout) {
+	RuleReactor.prototype.assert = function(instances,callback) {
 		var me = this;
 		// add instance to class.constructor.instances
 		instances = (Array.isArray(instances) || instances instanceof Array ? instances : [instances]);
@@ -714,7 +714,7 @@ var uuid = require("uuid");
 		instances.forEach(function(instance) {
 			// don't bother processing instances that don't impact rules or are already in the data store
 			if(instance && typeof(instance)==="object") { // !RuleReactor.data.has(instance)
-				if(instance.__rrid__===undefined) {
+				if(typeof(instance.__rrid__)==="undefined") {
 					Object.defineProperty(instance,"__rrid__",{value:uuid.v4()});
 				}
 				if(me.data.has(instance.__rrid)) {
@@ -886,7 +886,7 @@ var uuid = require("uuid");
 		if(!test.cxproduct) {
 			var variables = Object.keys(domain), collections = [], args;
 			variables.forEach(function(variable) {
-				domain[variable].instances = (domain[variable].instances ? domain[variable].instances: [])
+				domain[variable].instances = (domain[variable].instances ? domain[variable].instances: []);
 				collections.push(domain[variable].instances);
 			});
 			test.cxproduct = new CXProduct(collections);
@@ -1036,7 +1036,7 @@ var uuid = require("uuid");
 			}
 			if(me.run.executions<me.run.max) {
 				Object.keys(me.triggerlessRules).forEach(function(rulename) {
-					var rule = me.triggerlessRules[rulename], activations = rule.activations.get(undefined);
+					var rule = me.triggerlessRules[rulename], activations = rule.activations.get(); // get's activations associated with undefined domains
 					if(!activations || activations.length===0) {
 						rule.test();
 					}

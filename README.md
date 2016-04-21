@@ -269,6 +269,10 @@ For code quality assessment purposes, the cyclomatic complexity threshold is set
 
 Currently BETA
 
+2016-04-21 v0.0.19 
+
+* Codacy and CodeClimate driven style quality improvements. Not published to npm.
+
 2016-04-21 v0.0.18 
 
 * Codacy and CodeClimate driven style quality improvements. Not published to npm.
