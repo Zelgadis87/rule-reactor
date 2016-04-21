@@ -1,5 +1,10 @@
 # rule-reactor
 
+[![Codacy Badge](https://api.codacy.com/project/badge/grade/08aadbb230624a25a5961aeadf88b4bf)](https://www.codacy.com/app/syblackwell/rule-reactor)
+
+[![NPM](https://nodei.co/npm/rule-reactor.png?downloads=true&downloadRank=true&stars=true)](https://nodei.co/npm/rule-reactor/)
+
+
 A light weight, fast, expressive forward chaining business rule engine leveraging JavaScript internals and Functions as objects rather than Rete. 
 
 All rule conditions and actions are expressed as regular JavaScript functions so a JavaScript debugger can be fully utilized for debugging RuleReactor applications.
@@ -268,6 +273,10 @@ For code quality assessment purposes, the cyclomatic complexity threshold is set
 # Updates (reverse chronological order)
 
 Currently BETA
+
+2016-04-21 v0.0.21 
+
+* Added Codacy and NPM badges.
 
 2016-04-21 v0.0.20 
 

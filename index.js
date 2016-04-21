@@ -545,7 +545,7 @@ var uuid = require("uuid");
 							})) {
 								new Activation(me,match,i,cxproduct,instance);
 								result = true;
-							};
+							}
 						}
 						cxproduct.forEach(test);
 					}
