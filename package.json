@@ -39,7 +39,9 @@
     "codeclimate-test-reporter": "^0.2.0",
     "istanbul": "^0.4.2",
     "mocha": "^2.3.4",
-    "bluebird": "^3.3.5"
+    "bluebird": "^3.3.5",
+    "browserify": "^13.0.0",
+    "minify": "^2.0.8"
   },
   "dependencies": {
     "uuid": "^2.0.1"
