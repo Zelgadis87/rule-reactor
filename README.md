@@ -1,5 +1,6 @@
 # rule-reactor
 
+[![Build Status](https://travis-ci.org/anywhichway/jovial.svg)](https://travis-ci.org/anywhichway/rule-reactor)
 [![Codacy Badge](https://api.codacy.com/project/badge/grade/08aadbb230624a25a5961aeadf88b4bf)](https://www.codacy.com/app/syblackwell/rule-reactor)
 
 [![NPM](https://nodei.co/npm/rule-reactor.png?downloads=true&downloadRank=true&stars=true)](https://nodei.co/npm/rule-reactor/)
