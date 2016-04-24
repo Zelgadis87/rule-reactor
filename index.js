@@ -203,11 +203,11 @@ var uuid = require("uuid");
 			cons.prototype.activeKeys = (cons.prototype.activeKeys ? cons.prototype.activeKeys : {});
 			cons.exists = function(f) {
 				f = (f ? f : function() { return true; });
-				return cons.instances && cons.instances.soreactor(function(instance) {
+				return cons.instances && cons.instances.some(function(instance) {
 					return f(instance);
 				});
 			};
-			cons.forall = function(f) {
+			cons.forAll = function(f) {
 				return cons.instances && cons.instances.every(function(instance) {
 					return f(instance);
 				});
@@ -479,7 +479,7 @@ var uuid = require("uuid");
 			}
 		});
 		if(test) {
-			me.test(instance);
+			return me.test(instance);
 		}
 	}
 	Rule.prototype.delete = function() {

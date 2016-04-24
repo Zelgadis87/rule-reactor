@@ -274,26 +274,33 @@ For code quality assessment purposes, the cyclomatic complexity threshold is set
 
 Currently BETA
 
+2016-04-21 v0.0.22 Not published to npm.
+
+* Added unit tests.
+* Renamed function forall for constructor instance checking to forAll. This does not impact the forAll that is used in rules.
+* Modified bind to return true/false if it is used to test rules by passing the optional test argument.
+* Started building through travis-ci online.
+
 2016-04-21 v0.0.21 
 
 * Added Codacy and NPM badges.
 
-2016-04-21 v0.0.20 
+2016-04-21 v0.0.20 Not published to npm.
 
-* Codacy and CodeClimate driven style quality improvements. Not published to npm.
+* Codacy and CodeClimate driven style quality improvements. 
 
-2016-04-21 v0.0.19 
+2016-04-21 v0.0.19  Not published to npm.
 
-* Codacy and CodeClimate driven style quality improvements. Not published to npm.
+* Codacy and CodeClimate driven style quality improvements.
 
-2016-04-21 v0.0.18 
+2016-04-21 v0.0.18 Not published to npm.
 
-* Codacy and CodeClimate driven style quality improvements. Not published to npm.
+* Codacy and CodeClimate driven style quality improvements. 
 
-2016-04-21 v0.0.17 
+2016-04-21 v0.0.17 Not published to npm.
 
 * Corrected some documentation errors
-* Codacy and CodeClimate driven style quality improvements. Not published to npm.
+* Codacy and CodeClimate driven style quality improvements. 
 
 2016-04-20 v0.0.16 
 

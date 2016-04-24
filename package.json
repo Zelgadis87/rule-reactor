@@ -1,6 +1,6 @@
 {
   "name": "rule-reactor",
-  "version": "0.0.21",
+  "version": "0.0.22",
   "description": "A light weight, fast, expressive forward chaining business rule engine leveraging JavaScript internals, lazy cross-products, and Functions as objects rather than Rete.",
   "main": "index.js",
   "client": "./browser/rule-reactor.js",
