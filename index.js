@@ -34,30 +34,31 @@ var uuid = require("uuid");
 		if (arrays === 1) {
 			return intersection(array,array);
 		}
-		 
+
 		var arg   = 0, // current arg index
-				bits  = 0, // bits to compare at the end
-				count = 0, // unique item count
-				items = [], // unique items
-				match = [], // item bits
-				seen  = new Map(); // item -> index map
-		 
+		bits  = 0, // bits to compare at the end
+		count = 0, // unique item count
+		items = [], // unique items
+		match = [], // item bits
+		seen  = new Map(), // item -> index map
+		i;
+
 		do {
 			var arr = arguments[arg],
-					len = arr.length,
-					bit = 1 << arg, // each array is assigned a bit
-					i   = 0;
-		 
+			len = arr.length,
+			bit = 1 << arg; // each array is assigned a bit
+			i   = 0;
+
 			if (!len) {
 				return []; // bail out if empty array
 			}
-		 
+
 			bits |= bit; // add the bit to the collected bits
 			do {
 				var value = arr[i],
-						index = seen.get(value); // find existing item index
-		 
-				if (index === undefined) { // new item
+				index = seen.get(value); // find existing item index
+
+				if (typeof(index) === "undefined") { // new item
 					count++;
 					index = match.length;
 					seen.set(value, index);
@@ -68,17 +69,17 @@ var uuid = require("uuid");
 				}
 			} while (++i < len);
 		} while (++arg < arrays);
-		 
-			var result = [],
-			i = 0;
-		 
+
+		var result = [];
+		i = 0;
+
 		do { // filter out items that don't have the full bitfield
 			if (match[i] === bits) {
 				result[result.length] = items[i];
 			}
 		} while (++i < count);
-		 
-			return result;
+
+		return result;
 	}
 	
 //		portions from http://phrogz.net/lazy-cartesian-product
@@ -773,7 +774,7 @@ var uuid = require("uuid");
 		parentkeys = (parentkeys ? parentkeys : []);
 		parentinstances = (parentinstances ? parentinstances : []);
 		return Object.keys(index).some(function(key) {
-			var value = (primitive ? instance.valueOf() : instance[key]), type = typeof(value)
+			var value = (primitive ? instance.valueOf() : instance[key]), type = typeof(value);
 			if(!primitive && typeof(instance[key])==="undefined") {
 				return false;
 			}

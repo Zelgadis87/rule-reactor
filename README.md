@@ -281,6 +281,10 @@ For code quality assessment purposes, the cyclomatic complexity threshold is set
 
 Currently BETA
 
+2016-04-21 v0.0.24 Not published to npm.
+
+* Codacy and CodeClimate driven style quality improvements. 
+
 2016-04-25 v0.0.23
 
 * Added support for indexing primitive objects, e.g. Number, String, Boolean. As a result, this type of pattern will work: exists({to: Number},{to: 1})
