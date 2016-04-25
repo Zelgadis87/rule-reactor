@@ -26,6 +26,62 @@ var uuid = require("uuid");
 (function() {
 	"use strict";
 	
+	function intersection(array) {
+		var arrays = arguments.length;
+		// fast path when we have nothing to intersect
+		if (arrays === 0) {
+			return [];
+		}
+		if (arrays === 1) {
+			return intersection(array,array);
+		}
+		 
+		var arg   = 0, // current arg index
+				bits  = 0, // bits to compare at the end
+				count = 0, // unique item count
+				items = [], // unique items
+				match = [], // item bits
+				seen  = new Map(); // item -> index map
+		 
+		do {
+			var arr = arguments[arg],
+					len = arr.length,
+					bit = 1 << arg, // each array is assigned a bit
+					i   = 0;
+		 
+			if (!len) {
+				return []; // bail out if empty array
+			}
+		 
+			bits |= bit; // add the bit to the collected bits
+			do {
+				var value = arr[i],
+						index = seen.get(value); // find existing item index
+		 
+				if (index === undefined) { // new item
+					count++;
+					index = match.length;
+					seen.set(value, index);
+					items[index] = value;
+					match[index] = bit;
+				} else { // update existing item
+					match[index] |= bit;
+				}
+			} while (++i < len);
+		} while (++arg < arrays);
+		 
+			var result = [],
+			i = 0;
+		 
+		do { // filter out items that don't have the full bitfield
+			if (match[i] === bits) {
+				result[result.length] = items[i];
+			}
+		} while (++i < count);
+		 
+			return result;
+	}
+	
 //		portions from http://phrogz.net/lazy-cartesian-product
 	function CXProduct(collections){
 		var me = this;
@@ -595,10 +651,16 @@ var uuid = require("uuid");
 	}
 
 	function indexObject(index,instance) {
-		var keys = Object.keys(instance);
+		var keys, primitive = false;
+		if(instance instanceof Number || instance instanceof String || instance instanceof Boolean) {
+			keys = ["value"];
+			primitive = true;
+		} else {
+			keys = Object.keys(instance);
+		}	
 		keys.forEach(function(key) {
 			index[key] = (index[key] ? index[key] : {});
-			var value = instance[key], type = typeof(value), valuekey, typekey;
+			var value = (primitive ? instance.valueOf() : instance[key]), type = typeof(value), valuekey, typekey;
 			if(type==="object" && value) {
 				if(typeof(value.__rrid__)==="undefined") {
 					Object.defineProperty(value,"__rrid__",{value:uuid.v4()});
@@ -658,12 +720,95 @@ var uuid = require("uuid");
 	}
 	function matchObject(index,instance,parentkeys,parentinstances) {
 		if(!index) { return false; }
-		var	keys = Object.keys(instance);
+		var	keys, primitive = false, instances;
+		if(instance instanceof Number || instance instanceof String || instance instanceof Boolean || ["number","string","boolean"].indexOf(typeof(instance))>=0) {
+			keys = ["value"];
+			primitive = true;
+		} else {
+			keys = Object.keys(instance);
+		}	
 		parentkeys = (parentkeys ? parentkeys : []);
 		parentinstances = (parentinstances ? parentinstances : []);
 		return keys.every(function(key) {
-			if(!index[key]) { return false; }
-			var value = instance[key], type = typeof(value), valuekey, typekey;
+			if(!primitive && !index[key]) { return false; }
+			var value = (primitive ? instance.valueOf() : instance[key]), type = typeof(value), valuekey, typekey;
+			if(type==="object" && value) {
+				if(parentkeys.indexOf(key)>=0 && parentkeys.indexOf(key)===parentinstances.indexOf(value)) {
+					return true;
+				}
+				var valuekeys = Object.keys(index[key]);
+				return valuekeys.some(function(valuekey) {
+					var parts = valuekey.split("@");
+					if(parts.length!==2) {
+						return false;
+					}
+					var cons = Function("return " + parts[0])();
+					if(typeof(cons)!=="function" || !cons.index) {
+						return false;
+					}
+					parentkeys.push(key);
+					parentinstances.push(value);
+					return matchObject(cons.index,value,parentkeys,parentinstances);
+				});
+			} else {
+				valuekey = value;
+			}
+			if(value===null || typeof(value)==="undefined") {
+				typekey = "undefined";
+			} else {
+				typekey = type;
+			}
+			if(!index[key][valuekey]) { return false; }
+			if(!index[key][valuekey][typekey]) { return false; }
+			if(instance.__rrid__ && !index[key][valuekey][typekey][instance.__rrid__]){  return false; }
+			instances = (instances ? intersection(instances,Object.keys(index[key][valuekey][typekey]))  : Object.keys(index[key][valuekey][typekey]));
+			return instances.length>0;
+		});
+	}
+	function notMatchObject(index,instance,parentkeys,parentinstances) {
+		if(!index) { return false; }
+		var	primitive = false;
+		if(instance instanceof Number || instance instanceof String || instance instanceof Boolean || ["number","string","boolean"].indexOf(typeof(instance))>=0) {
+			primitive = true;
+		}	
+		parentkeys = (parentkeys ? parentkeys : []);
+		parentinstances = (parentinstances ? parentinstances : []);
+		return Object.keys(index).some(function(key) {
+			var value = (primitive ? instance.valueOf() : instance[key]), type = typeof(value)
+			if(!primitive && typeof(instance[key])==="undefined") {
+				return false;
+			}
+			if(type==="object" && value) {
+				if(parentkeys.indexOf(key)>=0 && parentkeys.indexOf(key)===parentinstances.indexOf(value)) {
+					return true;
+				}
+				var valuekeys = Object.keys(index[key]);
+				return valuekeys.some(function(valuekey) {
+					var parts = valuekey.split("@");
+					if(parts.length!==2) {
+						return false;
+					}
+					var cons = Function("return " + parts[0])();
+					if(typeof(cons)!=="function" || !cons.index) {
+						return false;
+					}
+					parentkeys.push(key);
+					parentinstances.push(value);
+					return notMatchObject(cons.index,value,parentkeys,parentinstances);
+				});
+			}
+			return Object.keys(index[key]).some(function(valuekey) {
+				if(valuekey!==value+"") {
+					return true;
+				}
+				return Object.keys(index[key][valuekey]).some(function(typekey) {
+					if(typekey!==type) {
+						return true;
+					}
+				});
+			});
+		});
+		/*	var value = (primitive ? instance.valueOf() : instance[key]), type = typeof(value), valuekey, typekey;
 			if(type==="object" && value) {
 				if(parentkeys.indexOf(key)>=0 && parentkeys.indexOf(key)===parentinstances.indexOf(value)) {
 					return true;
@@ -695,6 +840,7 @@ var uuid = require("uuid");
 			if(instance.__rrid__ && !index[key][valuekey][typekey][instance.__rrid__]){  return false; }
 			return true;
 		});
+		*/
 	}
 	function RuleReactor (domain,boost) {
 		this.boost = boost;
@@ -881,11 +1027,24 @@ var uuid = require("uuid");
 		if(typeof(domain)!=="object") {
 			throw new TypeError("Domain " + domain + " is not an object in universal quantification");
 		}
+		var variables = Object.keys(domain);
+		if(typeof(test)==="object") {
+			if(!test) {
+				throw new TypeError("Universal quantification condition is null");
+			}
+			return Object.keys(test).every(function(variable) {
+				var i = variables.indexOf(variable);
+				if(i===-1) {
+					throw new ReferenceError("Undeclared domain variable '" + variable + "' in existential quantification match condition");
+				}
+				return !notMatchObject(domain[variable].index,test[variable]);
+			});
+		}
 		if((test+"").indexOf("return ")===-1) {
 			throw new TypeError("Universal quantification condition function missing a return statement: " + test);
 		}
 		if(!test.cxproduct) {
-			var variables = Object.keys(domain), collections = [], args;
+			var collections = [], args;
 			variables.forEach(function(variable) {
 				domain[variable].instances = (domain[variable].instances ? domain[variable].instances: []);
 				collections.push(domain[variable].instances);

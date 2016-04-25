@@ -246,6 +246,22 @@ describe("rule-reactor ", function() {
 		expect(result).to.equal(true);
 		rule.delete();
 	});
+	it("should support existential pattern tests",function() {
+		var reactor = new RuleReactor();
+		var to = new Number(1);
+		reactor.assert(to);
+		var rule = reactor.createRule("test",0,{},
+				function() {
+					return RuleReactor.exists({to: Number},{to: 1});
+				},
+				function() {
+					;
+				}
+		);
+		var result = rule.test();
+		expect(result).to.equal(true);
+		rule.delete();
+	});
 	it("should support universal tests",function() {
 		var reactor = new RuleReactor();
 		var to = new Number(1);
@@ -253,6 +269,22 @@ describe("rule-reactor ", function() {
 		var rule = reactor.createRule("test",0,{},
 				function() {
 					return RuleReactor.forAll({to: Number},function(to) { return to==1; });
+				},
+				function() {
+					;
+				}
+		);
+		var result = rule.test();
+		expect(result).to.equal(true);
+		rule.delete();
+	});
+	it("should support universal pattern tests",function() {
+		var reactor = new RuleReactor();
+		var to = new Number(1);
+		reactor.assert(to);
+		var rule = reactor.createRule("test",0,{},
+				function() {
+					return RuleReactor.forAll({to: Number},{to: 1});
 				},
 				function() {
 					;
@@ -572,6 +604,20 @@ describe("rule-reactor ", function() {
 		var result;
 		reactor.assert(to);
 		result = Number.exists(function(instance) { return instance.valueOf()===1; })
+		expect(result).to.equal(true);
+	});
+	it("should support exists on constructor instances with no test, i.e. there is at least one", function() {
+		var reactor = new RuleReactor();
+		var to = new Number(1);
+		var result;
+		reactor.assert(to);
+		result = Number.exists()
+		expect(result).to.equal(true);
+	});
+	it("should support not exists on constructor instances with no test, i.e. there are none", function() {
+		var reactor = new RuleReactor();
+		var result;
+		result = Number.exists()
 		expect(result).to.equal(true);
 	});
 	it("should support not exists on constructor instances as well as in rules", function() {

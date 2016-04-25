@@ -42,7 +42,7 @@ or
 <script>var reactor = new RuleReactor()</script>
 ```
 
-RuleReactor takes an optional boolean argument. If set to `true`, then an extra compile step is taken when creating rules. This can boost performance by up to 25%; however, breakpoints set in rule conditions, will no longer work. So, this should be a final step in development.
+The RuleReactor constructor can take two optional arguments, `domain` and `boost`. The `domain` argument is just a hint regarding what classes to augment. It is an object that should have keys by the same name as class constructors you wish to use, e.g. {Person: Person, Home: Home}. If you have any anonymous constructors you will be using, this allows you to effectively de-anonymize them for RuleReactor. When the `boost` is set to `true`, then an extra compile step is taken when creating rules. This can boost performance by up to 25%; however, breakpoints set in rule conditions, will no longer work. So, this should be a final step in development. If you don't want to use the domain argument when using `boost`, you can set it to `null` or `{}`.
 
 The first thing to do is decide which of your own classes are going to be accessed by rules and ensure they are defined before any referencing rules are created.
 
@@ -218,6 +218,10 @@ reactor.createRule("every",0,{},
 	});
 ```
 
+### Universal Quantification With Indexed Patterns
+
+Universal quantification with indexed patterns works in a similar manner to that for existential quantification.
+
 ### Triggerless Rules
 
 If you want to have a rule that is evaluated every rule processing cycle, then just make the rule have no domain and no existential or universal quantification, e.g.
@@ -254,6 +258,8 @@ Just above the run command a few lines up, you can see a call to .trace. RuleRea
 	
 But, most importantly you can set regular JavaScript break points in your rule conditions! If you have a complex condition, then break it into several functions while doing development.
 
+Note: Breakpoints will not be activated if the RuleReactor is created with the second argument `boost` set to true, because boosting re-writes rule conditions as more performant functions.
+
 To assist in unit testing rules, RuleReactor keeps track of the maximum number of potential matches found for a rule as well as how many times it was tested, activated, or fired. These statistics are printed to the console in the order just listed when the .run command completes if the trace level is set to 3. They are also available as data properties of a rule instance.
 
 
@@ -275,7 +281,15 @@ For code quality assessment purposes, the cyclomatic complexity threshold is set
 
 Currently BETA
 
-2016-04-21 v0.0.22 Not published to npm.
+2016-04-25 v0.0.23
+
+* Added support for indexing primitive objects, e.g. Number, String, Boolean. As a result, this type of pattern will work: exists({to: Number},{to: 1})
+* Added support for universal quantification patterns, e.g. forAll({to: Number},{to: 1}). Formerly, only existential were supported.
+* Addressed an issue where existential quantification pattern matching sometimes did not return the same result as function based existential quantification. 
+The function based quantification was always correct.
+* Added unit tests.
+
+2016-04-24 v0.0.22 Not published to npm.
 
 * Added unit tests.
 * Renamed function forall for constructor instance checking to forAll. This does not impact the forAll that is used in rules.

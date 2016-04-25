@@ -44,7 +44,7 @@ function Count(c) {
 	this.c=c;
 }
 
-var reactor = new RuleReactor({},true);
+var reactor = new RuleReactor({},false);
 reactor.trace(0);
 function not() { return reactor.not.apply(reactor,arguments); }
 function assert() { return reactor.assert.apply(reactor,arguments); }
@@ -73,11 +73,12 @@ reactor.createRule("assignSeats",0,{context: Context,seating: Seating,guest1: Gu
 		guest2.sex!=guest1.sex &&
 		guest2.hobby==guest1.hobby &&
 		count.c>=0 &&
+		// use patterns to test
 		not(exists({path: Path},{path: {id:seating.id,name:guest2.name}})) &&
-		not(exists({chosen: Chosen},{chosen: {id:seating.id,name:guest2.name,hobby:guest2.hobby}}))
-		// change these to pattern matches?
+		not(exists({chosen: Chosen},{chosen: {id:seating.id,name:guest2.name,hobby:guest2.hobby}}));
+		// alternatively, use functions
 		//not(exists({path: Path},function(path) { return path.id==seating.id && path.name==guest2.name; }));
-		/not(exists({chosen: Chosen},function(chosen) { return chosen.id==seating.id && chosen.name==guest2.name && chosen.hobby==guest2.hobby; }));
+		//not(exists({chosen: Chosen},function(chosen) { return chosen.id==seating.id && chosen.name==guest2.name && chosen.hobby==guest2.hobby; }));
 	},
 	function(context,seating,guest1,guest2,count) {
 		assert(new Seating(seating.seat2,guest1.name,guest2.name,seating.seat2+1,count.c,seating.id,false));
@@ -86,15 +87,15 @@ reactor.createRule("assignSeats",0,{context: Context,seating: Seating,guest1: Gu
 		count.c = count.c + 1;
 		context.state = "make path";
 	});
-
 reactor.createRule("makePath",1,{context: Context,seating: Seating,path: Path},
 	function(context,seating,path) {
 		return context.state=="make path" &&
 		seating.pathDone==false &&
 		path.id==seating.pid &&
-		//not(exists({otherpath: Path},{otherpath: {id:seating.id,name:path.name}}));
-		// change to pattern match?
-		not(exists({otherpath: Path},function(otherpath) { return otherpath.id==seating.id && otherpath.name==path.name; }));
+		// use pattern to test
+		not(exists({otherpath: Path},{otherpath: {id:seating.id,name:path.name}}));
+		// alternatively, use function
+		// not(exists({otherpath: Path},function(otherpath) { return otherpath.id==seating.id && otherpath.name==path.name; }));
 	},
 	function(seating,path) {
 		assert(new Path(seating.id,path.name,path.seat,path.hobby));
@@ -159,7 +160,7 @@ reactor.createRule("printResults",-1,{context: Context},
 		console.log("Modifications: ",reactor.run.modifications);
 		console.log("RPS: ",reactor.run.rps);
 	});
-/*
+
 assert([
 	new Guest("n1","m","h3"),
 	new Guest("n1","m","h2"),
@@ -184,7 +185,7 @@ assert([
 	new Count(1),
 	new Context("start")
 ]);
-*/
+/*
 assert([
 new Guest("n1","m","h1"),
 new Guest("n1","m","h3"),
@@ -272,36 +273,13 @@ new LastSeat(32),
 new Count(1),
 new Context("start")
 ]);
-
+*/
 function run() {
 	reactor.run(Infinity);
 }
 run();
 
-/*
 
-((Guest name n1 sex m hobby h3)
-(Guest name n1 sex m hobby h2)
-(Guest name n2 sex m hobby h2)
-(Guest name n2 sex m hobby h3)
-(Guest name n3 sex m hobby h1)
-(Guest name n3 sex m hobby h2)
-(Guest name n3 sex m hobby h3)
-(Guest name n4 sex f hobby h3)
-(Guest name n4 sex f hobby h2)
-(Guest name n5 sex f hobby h1)
-(Guest name n5 sex f hobby h2)
-(Guest name n5 sex f hobby h3)
-(Guest name n6 sex f hobby h3)
-(Guest name n6 sex f hobby h1)
-(Guest name n6 sex f hobby h2)
-(Guest name n7 sex f hobby h3)
-(Guest name n7 sex f hobby h2)
-(Guest name n8 sex m hobby h3)
-(Guest name n8 sex m hobby h1)
-(Last seat 8)
-(Count c 1)
-(context state start)) */
 
 </script>
 
