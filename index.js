@@ -427,8 +427,8 @@ var uuid = require("uuid");
 		if (comparator == null) {
 			// emulate the default Array.sort() comparator
 			comparator = function(a, b) {
-				if (typeof a !== 'string') a = String(a);
-				if (typeof b !== 'string') b = String(b);
+				if (typeof a !== "string") { a = String(a); }
+				if (typeof b !== "string") { b = String(b); }
 				return (a > b ? 1 : (a < b ? -1 : 0));
 			};
 		}
@@ -898,7 +898,7 @@ var uuid = require("uuid");
 								if(rule.triggers.some(function(trigger) {
 									return Object.keys(trigger.range).some(function(variable) {
 										return trigger.range[variable][key] && instance instanceof trigger.domain[variable];
-								})})) {
+								}); })) {
 									var activations = rule.activations.get(instance);
 									if(activations) {
 										activations.forEach(function(activation) {
@@ -1078,7 +1078,7 @@ var uuid = require("uuid");
 		if(!test.cxproduct) {
 			var collections = [], args;
 			variables.forEach(function(variable) {
-				domain[variable].instances = (domain[variable].instances ? domain[variable].instances: [])
+				domain[variable].instances = (domain[variable].instances ? domain[variable].instances: []);
 				collections.push(domain[variable].instances);
 			});
 			test.cxproduct = new CXProduct(collections);
