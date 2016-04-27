@@ -281,7 +281,11 @@ For code quality assessment purposes, the cyclomatic complexity threshold is set
 
 Currently BETA
 
-2016-04-27 v0.0.25
+2016-04-27 v0.0.28 Not published to npm.
+
+* Codacy and CodeClimate driven style quality improvements.
+
+2016-04-27 v0.0.27
 
 * Optimized activation insertion into agenda. Applications with a large number of rules on the agenda with different saliences or that thrash the agenda should run slightly faster.
 
