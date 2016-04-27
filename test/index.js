@@ -356,6 +356,24 @@ describe("rule-reactor ", function() {
 		rule1.delete();
 		rule2.delete();
 	});
+	it("should order by salience and timestamp",function() {
+		var reactor = new RuleReactor();
+		var to1 = new Number(1), to2 = new Number(1);
+		var rule1 = reactor.createRule("rule one",0,{t1:Number},
+				function(t1) {
+					return t1==1;
+				},
+				function() {
+					;
+				}
+		);
+		reactor.assert(to1);
+		setTimeout(function() {
+			reactor.assert(to2);
+			expect(reactor.agenda[1].timestamp>reactor.agenda[0].timestamp).to.equal(true);
+			rule1.delete();
+		},1000);
+	});
 	it("should support rule reset",function() {
 		var reactor = new RuleReactor();
 		var to = new Number(1);

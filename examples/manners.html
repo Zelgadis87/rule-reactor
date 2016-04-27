@@ -44,7 +44,7 @@ function Count(c) {
 	this.c=c;
 }
 
-var reactor = new RuleReactor({},false);
+var reactor = new RuleReactor({},true);
 reactor.trace(0);
 function not() { return reactor.not.apply(reactor,arguments); }
 function assert() { return reactor.assert.apply(reactor,arguments); }
@@ -160,7 +160,7 @@ reactor.createRule("printResults",-1,{context: Context},
 		console.log("Modifications: ",reactor.run.modifications);
 		console.log("RPS: ",reactor.run.rps);
 	});
-
+/*
 assert([
 	new Guest("n1","m","h3"),
 	new Guest("n1","m","h2"),
@@ -185,7 +185,7 @@ assert([
 	new Count(1),
 	new Context("start")
 ]);
-/*
+*/
 assert([
 new Guest("n1","m","h1"),
 new Guest("n1","m","h3"),
@@ -273,7 +273,7 @@ new LastSeat(32),
 new Count(1),
 new Context("start")
 ]);
-*/
+
 function run() {
 	reactor.run(Infinity);
 }

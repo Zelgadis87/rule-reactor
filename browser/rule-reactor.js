@@ -35,30 +35,31 @@ var uuid = require("uuid");
 		if (arrays === 1) {
 			return intersection(array,array);
 		}
-		 
+
 		var arg   = 0, // current arg index
-				bits  = 0, // bits to compare at the end
-				count = 0, // unique item count
-				items = [], // unique items
-				match = [], // item bits
-				seen  = new Map(); // item -> index map
-		 
+		bits  = 0, // bits to compare at the end
+		count = 0, // unique item count
+		items = [], // unique items
+		match = [], // item bits
+		seen  = new Map(), // item -> index map
+		i;
+
 		do {
 			var arr = arguments[arg],
-					len = arr.length,
-					bit = 1 << arg, // each array is assigned a bit
-					i   = 0;
-		 
+			len = arr.length,
+			bit = 1 << arg; // each array is assigned a bit
+			i   = 0;
+
 			if (!len) {
 				return []; // bail out if empty array
 			}
-		 
+
 			bits |= bit; // add the bit to the collected bits
 			do {
 				var value = arr[i],
-						index = seen.get(value); // find existing item index
-		 
-				if (index === undefined) { // new item
+				index = seen.get(value); // find existing item index
+
+				if (typeof(index) === "undefined") { // new item
 					count++;
 					index = match.length;
 					seen.set(value, index);
@@ -69,17 +70,17 @@ var uuid = require("uuid");
 				}
 			} while (++i < len);
 		} while (++arg < arrays);
-		 
-			var result = [],
-			i = 0;
-		 
+
+		var result = [];
+		i = 0;
+
 		do { // filter out items that don't have the full bitfield
 			if (match[i] === bits) {
 				result[result.length] = items[i];
 			}
 		} while (++i < count);
-		 
-			return result;
+
+		return result;
 	}
 	
 //		portions from http://phrogz.net/lazy-cartesian-product
@@ -421,23 +422,43 @@ var uuid = require("uuid");
 	};
 	// uncomment line below to stop logging
 	//Console.log = function() {};
+	
+	// http://stackoverflow.com/questions/1344500/efficient-way-to-insert-a-number-into-a-sorted-array-of-numbers
+	function insertSorted(arr, item, comparator) {
+	    if (comparator == null) {
+	        // emulate the default Array.sort() comparator
+	        comparator = function(a, b) {
+	            if (typeof a !== 'string') a = String(a);
+	            if (typeof b !== 'string') b = String(b);
+	            return (a > b ? 1 : (a < b ? -1 : 0));
+	        };
+	    }
+	    // get the index we need to insert the item at
+	    var min = 0;
+	    var max = arr.length;
+	    var index = Math.floor((min + max) / 2);
+	    while (max > min) {
+	        if (comparator(item, arr[index]) < 0) {
+	            max = index;
+	        } else {
+	            min = index + 1;
+	        }
+	        index = Math.floor((min + max) / 2);
+	    }
+	    // insert the item
+	    arr.splice(index, 0, item);
+	}
 
 	function Activation(rule,match,index,bindings,instance) {
 		var me = this;
+		me.timestamp = new Date();
 		me.rule = rule;
 		me.match = match;
 		me.index = index;
 		me.bindings = bindings;
 		me.instance = instance;
 		me.rule.activated++;
-		if(!me.rule.reactor.agenda.some(function(activation,i) {
-			if(activation.rule.salience>me.rule.salience) {
-				me.rule.reactor.agenda.splice(i,0,me);
-				return true;
-			}
-		})) {
-			me.rule.reactor.agenda.push(me);
-		}
+		insertSorted(me.rule.reactor.agenda,me,function(a,b) { return (a.rule.salience > b.rule.salience ? 1 : (a.rule.salience < b.rule.salience ? -1 : 0)); });
 		var activations = rule.activations.get(instance);
 		if(!activations) {
 			activations = [];
@@ -448,11 +469,14 @@ var uuid = require("uuid");
 			Console.log("Activating: ",rule,match);
 		}
 	}
+	Activation.prototype.cancel = function() {
+		this.cancelled = true;
+	}
 	Activation.prototype.execute = function(index) {
 		var me = this;
 		// re-test just in-case
 		me.delete(undefined,index,true);
-		if((!me.bindings || me.bindings.verify(me.index,me.match)) && me.rule.compiledConditions.every(function(condition) {
+		if(!me.cancelled && (!me.bindings || me.bindings.verify(me.index,me.match)) && me.rule.compiledConditions.every(function(condition) {
 			return condition.call(me,me.match);
 		})) {
 			me.rule.fire(me.match);
@@ -516,11 +540,7 @@ var uuid = require("uuid");
 		me.tested = 0;
 		me.activated = 0;
 		me.fired = 0;
-		//if(me.reactor.processor) {
-		//	setTimeout(compile,0,reactor,me,me.boost);
-		//} else {
-			compile(reactor,me,me.boost);
-		//}
+		compile(reactor,me,me.boost);
 		if(me.reactor.tracelevel>2) {
 			Console.log("New Rule: ",me);
 		}
@@ -774,7 +794,7 @@ var uuid = require("uuid");
 		parentkeys = (parentkeys ? parentkeys : []);
 		parentinstances = (parentinstances ? parentinstances : []);
 		return Object.keys(index).some(function(key) {
-			var value = (primitive ? instance.valueOf() : instance[key]), type = typeof(value)
+			var value = (primitive ? instance.valueOf() : instance[key]), type = typeof(value);
 			if(!primitive && typeof(instance[key])==="undefined") {
 				return false;
 			}
@@ -808,39 +828,6 @@ var uuid = require("uuid");
 				});
 			});
 		});
-		/*	var value = (primitive ? instance.valueOf() : instance[key]), type = typeof(value), valuekey, typekey;
-			if(type==="object" && value) {
-				if(parentkeys.indexOf(key)>=0 && parentkeys.indexOf(key)===parentinstances.indexOf(value)) {
-					return true;
-				}
-				var valuekeys = Object.keys(index[key]);
-				return valuekeys.some(function(valuekey) {
-					var parts = valuekey.split("@");
-					if(parts.length!==2) {
-						return false;
-					}
-					var cons = Function("return " + parts[0])();
-					if(typeof(cons)!=="function" || !cons.index) {
-						return false;
-					}
-					parentkeys.push(key);
-					parentinstances.push(value);
-					return matchObject(cons.index,value,parentkeys,parentinstances);
-				});
-			} else {
-				valuekey = value;
-			}
-			if(value===null || typeof(value)==="undefined") {
-				typekey = "undefined";
-			} else {
-				typekey = type;
-			}
-			if(!index[key][valuekey]) { return false; }
-			if(!index[key][valuekey][typekey]) { return false; }
-			if(instance.__rrid__ && !index[key][valuekey][typekey][instance.__rrid__]){  return false; }
-			return true;
-		});
-		*/
 	}
 	function RuleReactor (domain,boost) {
 		this.boost = boost;
@@ -916,7 +903,7 @@ var uuid = require("uuid");
 									var activations = rule.activations.get(instance);
 									if(activations) {
 										activations.forEach(function(activation) {
-											activation.delete();
+											activation.cancel();
 										});
 									}
 									rule.test(instance,key);
@@ -960,7 +947,7 @@ var uuid = require("uuid");
 												var activations = rule.activations.get(instance);
 												if(activations) {
 													activations.forEach(function(activation) {
-														activation.delete();
+														activation.cancel();
 													});
 												}
 												rule.test(instance,key);
