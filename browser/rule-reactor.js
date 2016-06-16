@@ -425,28 +425,28 @@ var uuid = require("uuid");
 	
 	// http://stackoverflow.com/questions/1344500/efficient-way-to-insert-a-number-into-a-sorted-array-of-numbers
 	function insertSorted(arr, item, comparator) {
-	    if (comparator == null) {
-	        // emulate the default Array.sort() comparator
-	        comparator = function(a, b) {
-	            if (typeof a !== 'string') a = String(a);
-	            if (typeof b !== 'string') b = String(b);
-	            return (a > b ? 1 : (a < b ? -1 : 0));
-	        };
-	    }
-	    // get the index we need to insert the item at
-	    var min = 0;
-	    var max = arr.length;
-	    var index = Math.floor((min + max) / 2);
-	    while (max > min) {
-	        if (comparator(item, arr[index]) < 0) {
-	            max = index;
-	        } else {
-	            min = index + 1;
-	        }
-	        index = Math.floor((min + max) / 2);
-	    }
-	    // insert the item
-	    arr.splice(index, 0, item);
+		if (comparator == null) {
+			// emulate the default Array.sort() comparator
+			comparator = function(a, b) {
+				if (typeof a !== "string") { a = String(a); }
+				if (typeof b !== "string") { b = String(b); }
+				return (a > b ? 1 : (a < b ? -1 : 0));
+			};
+		}
+		// get the index we need to insert the item at
+		var min = 0;
+		var max = arr.length;
+		var index = Math.floor((min + max) / 2);
+		while (max > min) {
+			if (comparator(item, arr[index]) < 0) {
+				max = index;
+			} else {
+				min = index + 1;
+			}
+			index = Math.floor((min + max) / 2);
+		}
+		// insert the item
+		arr.splice(index, 0, item);
 	}
 
 	function Activation(rule,match,index,bindings,instance) {
@@ -899,7 +899,7 @@ var uuid = require("uuid");
 								if(rule.triggers.some(function(trigger) {
 									return Object.keys(trigger.range).some(function(variable) {
 										return trigger.range[variable][key] && instance instanceof trigger.domain[variable];
-								})})) {
+								}); })) {
 									var activations = rule.activations.get(instance);
 									if(activations) {
 										activations.forEach(function(activation) {
@@ -1079,7 +1079,7 @@ var uuid = require("uuid");
 		if(!test.cxproduct) {
 			var collections = [], args;
 			variables.forEach(function(variable) {
-				domain[variable].instances = (domain[variable].instances ? domain[variable].instances: [])
+				domain[variable].instances = (domain[variable].instances ? domain[variable].instances: []);
 				collections.push(domain[variable].instances);
 			});
 			test.cxproduct = new CXProduct(collections);
@@ -1209,7 +1209,7 @@ var uuid = require("uuid");
 		if(me.tracelevel>0) {
 			Console.log("Run: ",max);
 		}
-		setTimeout(run(),0);
+		setTimeout(run,0);
 	}
 	RuleReactor.prototype.stop = function() {
 		this.run.stop = new Date();

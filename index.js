@@ -1208,7 +1208,7 @@ var uuid = require("uuid");
 		if(me.tracelevel>0) {
 			Console.log("Run: ",max);
 		}
-		setTimeout(run(),0);
+		setTimeout(run,0);
 	}
 	RuleReactor.prototype.stop = function() {
 		this.run.stop = new Date();

@@ -281,6 +281,8 @@ For code quality assessment purposes, the cyclomatic complexity threshold is set
 
 Currently BETA
 
+2016-06-16 v0.0.29 Fixed [Issue 1](https://github.com/anywhichway/rule-reactor/issues/1). Added unit test. Thanks to [slmmm](https://github.com/slmmm) for identifying.
+
 2016-04-27 v0.0.28 Not published to npm.
 
 * Codacy and CodeClimate driven style quality improvements.

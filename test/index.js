@@ -677,4 +677,21 @@ describe("rule-reactor ", function() {
 		result = Number.forAll(function(instance) { return instance.valueOf()===1; })
 		expect(result).to.equal(false);
 	});
+	it("should call callback after run", function() {
+		var reactor = new RuleReactor();
+		var to = new Number(1);
+		var rule = reactor.createRule("test",0,{t: Number},
+				function(t) {
+					return t == 1;
+				},
+				function(t) {
+					;
+				}
+		);
+		rule.bind(to);
+		reactor.run(-1,false,function() {
+			expect(reactor.executions).to.equal(1);
+			rule.delete();
+		})
+	});
 });
