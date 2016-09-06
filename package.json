@@ -1,6 +1,6 @@
 {
   "name": "rule-reactor",
-  "version": "0.0.30",
+  "version": "0.1.0",
   "description": "A light weight, fast, expressive forward chaining business rule engine leveraging JavaScript internals, lazy cross-products, and Functions as objects rather than Rete.",
   "main": "index.js",
   "client": "./browser/rule-reactor.js",
@@ -29,7 +29,7 @@
     "TREAT"
   ],
   "author": "Simon Y. Blackwell <syblackwell@anywhichway.com> (http://www.github.com/anywhichway)",
-  "license": "AGPL-3.0",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/anywhichway/rule-reactor/issues"
   },
