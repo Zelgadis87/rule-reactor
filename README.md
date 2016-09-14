@@ -279,6 +279,8 @@ For code quality assessment purposes, the cyclomatic complexity threshold is set
 
 # Updates (reverse chronological order)
 
+2016-09-14 v0.1.1 Enhanced family example to address question posed in [Issue 2](https://github.com/anywhichway/rule-reactor/issues/2) regarding embedded object matching.
+
 2016-09-06 v0.1.0 Production release. License changed from AGPL to MIT.
 
 2016-06-16 v0.0.29 Fixed [Issue 1](https://github.com/anywhichway/rule-reactor/issues/1). Added unit test. Thanks to [slmmm](https://github.com/slmmm) for identifying.

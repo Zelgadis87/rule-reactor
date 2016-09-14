@@ -11,6 +11,10 @@ function not() { return reactor.not.apply(reactor,arguments); }
 function exists() { return reactor.exists.apply(reactor,arguments); }
 function forAll() { return reactor.forAll.apply(reactor,arguments); }
 
+function Address(city) {
+	this.city = city;
+}
+
 function Person(name) {
 	this.name = name;
 	this.parents = [];
@@ -56,11 +60,21 @@ reactor.createRule("every-named",1,{p1: Person},
 	function(p1) {
 		console.log("not every named the same",p1);
 	});
+reactor.createRule("same-city",1,{p1: Person,p2: Person},
+	function(p1,p2) {
+		return p1.address.city==p2.address.city && p1!=p2;
+	},
+	function(p1,p2) {
+		console.log(p1.name + " and " + p2.name + " are both in " + p1.address.city);
+	});
 
 reactor.trace(3);
-var mary = new Person("mary");
-var joe = new Person("joe");
-var bill = new Person("bill");
+var mary = new Person("mary"),
+	joe = new Person("joe"),
+	bill = new Person("bill");
+mary.address = new Address("Seattle");
+joe.address = new Address("Seattle");
+bill.address = new Address("Portland");
 reactor.assert([joe,bill,mary]);
 joe.brother = bill;
 joe.parents.push(mary);

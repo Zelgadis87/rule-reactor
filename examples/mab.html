@@ -1,0 +1,1009 @@
+<html>
+<body>
+
+<p>Open in debugger to see rule activity</p>
+<script src="../browser/rule-reactor.js"></script>
+<script id="example">
+var reactor = new RuleReactor();
+function not() { return reactor.not.apply(reactor,arguments); }
+function assert() { return reactor.assert.apply(reactor,arguments); }
+function exists() { return reactor.exists.apply(reactor,arguments); }
+function every() { return reactor.every.apply(reactor,arguments); }
+
+
+function Monkey(location,onTopOf,holding) { this.location=location, this.onTopOf=onTopOf, this.holding=holding; }
+function Thing(name,location,weight,onTopOf) { this.name=name, this.location=location, this.weight=weight, this.onTopOf=onTopOf; }
+function Chest(name,contents,unlockedBy) { this.name=name, this.contents=contents, this.unlockedBy=unlockedBy; }
+function Goal(action,argument1,argument2) { this.action=action; this.argument1=argument1, this.argument2=argument2; ; }
+
+function not(f) {
+	
+}
+
+reactor.createRule("hold-chest-to-put-on-floor",
+    0,
+    {goal: Goal, thing: Thing, monkey: Monkey},
+    function(goal,thing,monkey) {
+    	return goal.action=="unlock" &&
+    	thing.name==goal.argument1 &&
+    	thing.onTopOf!="floor" &&
+    	thing.weight=="light" &&
+    	monkey.holding!=goal.argument1 &&
+    	not(exists({othergoal: Goal},function(othergoal) { return othergoal.action=="hold" && othergoal.argument1==goal.argument1; }));
+    },
+    function(goal) {
+    	assert(new Goal("hold",goal.argument1));
+    });
+/*
+    (goal-is-to action unlock argument1 ?chest)
+    (thing name ?chest on-top-of ?surf weight light
+      (not= ?surf floor))
+    (monkey holding ?thing
+      (not= ?thing ?chest))
+    (not goal-is-to action hold argument1 ?chest)
+    =>
+    (asser goal-is-to action hold argument1 ?chest))
+*/
+reactor.createRule("put-chest-on-floor",
+    0,
+    {goal: Goal, thing: Thing, monkey: Monkey},
+    function(goal,thing,monkey) {
+    	return goal.action=="unlock" &&
+    	monkey.holding==goal.argument1
+    },
+    function(goal,thing,monkey) {
+    	console.log("Monkey throws the ", goal.argument1, " off the ", monkey.onTopOf, " onto the floor." );
+    	monkey.holding = null;
+    	thing.location = monkey.location;
+    	thing.onTopOf = "floor";
+    });
+ /*
+  (put-chest-on-floor
+    0
+    (goal-is-to action unlock argument1 ?chest)
+    ?monkey (monkey location ?place on-top-of ?on holding ?chest)
+    ?thing (thing name ?chest)
+    =>
+    (println (str "Monkey throws the " ?chest " off the " ?on " onto the floor." ))
+    (modify ?monkey holding blank)
+    (modify ?thing location ?place on-top-of floor))
+*/
+reactor.createRule("get-key-to-unlock",
+    0,
+    {goal: Goal, thing: Thing, chest: Chest, monkey: Monkey},
+    function(goal,thing,chest,monkey) {
+    	return goal.action=="unlock" &&
+    	thing.name==goal.argument1 &&
+    	chest.name==goal.argument1 &&
+    	monkey.holding!=chest.unlockedBy &&
+    	not(exists({othergoal: Goal},function(othergoal) { return othergoal.action=="hold" && othergoal.argument1==chest.unlockedBy}));
+    },
+    function(chest) {
+    	assert(new Goal("hold",chest.unlockedBy));
+    });
+/*
+  (get-key-to-unlock
+    0
+    (goal-is-to action unlock argument1 ?obj)
+    (thing name ?obj on-top-of floor)
+    (chest name ?obj unlocked-by ?key)
+    (monkey holding ?thing
+      (not= ?thing ?key))
+    (not goal-is-to action hold argument1 ?key)
+    =>
+    (asser goal-is-to action hold argument1 ?key))
+*/
+reactor.createRule("move-to-chest-with-key",
+    0,
+    {goal: Goal, thing: Thing, chest: Chest, monkey: Monkey},
+    function(goal,thing,chest,monkey) {
+    	return goal.action=="unlock" &&
+    	monkey.holding!=chest.unlockedBy &&
+    	thing.name==chest.name &&
+    	thing.place!=monkey.place &&  	
+    	not(exists({othergoal: Goal},function(othergoal) { othergoal.action=="walk to" && othergoal.argument1==chest.location}));	
+    },
+    function(chest) {
+    	assert(new Goal("walk to",chest.location));
+    });
+/*
+  (move-to-chest-with-key
+    0
+    (goal-is-to action unlock argument1 ?chest)
+    (monkey location ?mplace holding ?key)
+    (thing name ?chest location ?cplace on-top-of floor
+      (not= ?cplace ?mplace))
+    (chest name ?chest unlocked-by ?key)
+    (not goal-is-to action walk-to argument1 ?cplace)
+    =>
+    (asser goal-is-to action walk-to argument1 ?cplace))
+*/
+/*
+  (unlock-chest-with-key
+    0
+    ?goal (goal-is-to action unlock argument1 ?name)
+    ?chest (chest name ?name contents ?contents unlocked-by ?key)
+    (thing name ?name location ?place on-top-of ?on)
+    (monkey location ?place on-top-of ?on holding ?key)
+    =>
+    (println (str "Monkey opens the " ?name " with the " ?key " revealing the " ?contents "." ))
+    (modify ?chest contents nothing)
+    (asser thing name ?contents location ?place on-top-of ?name weight light)
+    (retract ?goal))
+*/
+reactor.createRule("unlock-chest-to-hold-object",
+    0,
+    {goal: Goal, chest: Chest},
+    function(goal,chest) {
+    	return goal.action=="hold" &&
+    	chest.contents==goal.argument1 &&
+    	not(exists({othergoal: Goal},function(othergoal) { return othergoal.action=="unlock" && othergoal.argument1==chest.name}));	
+    },
+    function(goal,chest) {
+    	assert(new Goal("unlock",chest.name));
+    });
+/*
+  (unlock-chest-to-hold-object
+    0
+    (goal-is-to action hold argument1 ?obj)
+    (chest name ?chest contents ?obj)
+    (not goal-is-to action unlock argument1 ?chest)
+    =>
+    (asser goal-is-to action unlock argument1 ?chest))
+*/
+reactor.createRule("use-ladder-to-hold",
+    0,
+    {goal: Goal, thing: Thing},
+    function(goal,thing) {
+    	return goal.action=="hold" &&
+    	thing.onTopOf=="ceiling" &&
+    	thing.weight=="light" &&
+    	not(exists({otherthing: Thing},function(otherthing) { return otherthing.name=="ladder" && otherthing.location==thing.location; })) &&
+    	not(exists({othergoal: Goal},function(othergoal) { return othergoal.action=="move" && othergoal.argument1=="ladder" && othergoal.argument2==thing.location; }));	
+    },
+    function(goal,thing) {
+    	assert(new Goal("move","ladder",thing.location));
+    });
+/*
+  (use-ladder-to-hold
+    0
+    (goal-is-to action hold argument1 ?obj)
+    (thing name ?obj location ?place on-top-of ceiling weight light)
+    (not thing name ladder location ?place)
+    (not goal-is-to action move argument1 ladder argument2 ?place)
+    =>
+    (asser goal-is-to action move argument1 ladder argument2 ?place))
+*/
+reactor.createRule("climb-ladder-to-hold",
+    0,
+    {goal: Goal, thing1: Thing, thing2: Thing, monkey: Monkey},
+    function(goal,thing1,thing2,monkey) {
+    	return goal.action=="hold" &&
+    	thing1.name==goal.argument1 &&
+    	thing1.onTopOf=="ceiling" &&
+    	thing1.weight=="light" &&
+    	thing2.name=="ladder" &&
+    	thing2.onTopOf=="floor" &&
+    	thing2.location==thing1.location &&
+    	monkey.onTopOf!="ladder" &&
+    	not(exists({othergoal: Goal},function(othergoal) { return othergoal.action=="on" && othergoal.argument1=="ladder"}));	
+    },
+    function() {
+    	assert(new Goal("on","ladder"));
+    });
+/*
+  (climb-ladder-to-hold
+    0
+    (goal-is-to action hold argument1 ?obj)
+    (thing name ?obj location ?place on-top-of ceiling weight light)
+    (thing name ladder location ?place on-top-of floor)
+    (monkey on-top-of ?s
+      (not= ?s ladder))
+    (not goal-is-to action on argument1 ladder)
+    =>
+    (asser goal-is-to action on argument1 ladder))
+*/
+reactor.createRule("grab-object-from-ladder",
+    0,
+    {goal: Goal, thing1: Thing, thing2: Thing, monkey: Monkey},
+    function(goal,thing1,thing2,monkey) {
+    	return goal.action=="hold" &&
+    	thing1.name==goal.argument1 &&
+    	thing1.onTopOf=="ceiling" &&
+    	thing1.weight=="light" &&
+    	thing2.name=="ladder" &&
+    	thing2.location==thing1.location &&
+    	monkey.location==thing1.location &&
+    	monkey.onTopOf=="ladder" &&
+    	monkey.holding==null
+    },
+    function(thing1,monkey) {
+    	console.log("Monkey grabs the ",thing1.name);
+    	thing1.location="held";
+    	thing1.onTopOf="held";
+    	monkey.holding=thing1.name;
+    });
+/*
+  (grab-object-from-ladder
+   0
+   ?goal (goal-is-to action hold argument1 ?name)
+   ?thing (thing name ?name location ?place on-top-of ceiling weight light)
+   (thing name ladder location ?place)
+   ?monkey (monkey location ?place on-top-of ladder holding blank)
+   =>
+   (println (str "Monkey grabs the " ?name "." ))
+   (modify ?thing location held on-top-of held)
+   (modify ?monkey holding ?name)
+   (retract ?goal))
+*/
+reactor.createRule("grab-object-from-ladder",
+    0,
+    {goal: Goal, thing: Thing, monkey: Monkey},
+    function(goal,thing,monkey) {
+    	return goal.action=="hold" &&
+    	thing.name==goal.argument1 &&
+    	thing.weight=="light" &&
+    	monkey.location==thing.location &&
+    	monkey.onTopOf!=thing.onTopOf &&
+    	not(exists({othergoal: Goal},function(othergoal) { return othergoal.action="on" && othergoal.argument1==thing.ontTopOf; }));
+    },
+    function(thing) {
+    	assert(new Goal("on",thing.onTopOf));
+    });
+/*
+  (climb-to-hold
+    0
+    (goal-is-to action hold argument1 ?obj)
+    (thing name ?obj location ?place on-top-of ?on weight light
+      (not= ?on ceiling))
+    (monkey location ?place on-top-of ?surf
+      (not= ?surf ?on))
+    (not goal-is-to action on argument1 ?on)
+    =>
+    (asser goal-is-to action on argument1 ?on))
+*/
+reactor.createRule("walk-to-hold",
+    0,
+    {goal: Goal, thing: Thing, monkey: Monkey},
+    function(goal,thing,monkey) {
+    	return goal.action=="hold" &&
+    	thing.name==goal.argument1 &&
+    	thing.weight=="light" &&
+    	thing.onTopOf!="ceiling" &&
+    	monkey.location!=thing.location &&
+    	not(exists({othergoal: Goal},function(othergoal) { return othergoal.action="walk to" && othergoal.argument1==thing.location; }));
+    },
+    function(thing) {
+    	assert(new Goal("walk to",thing.location));
+    });
+/*
+  (walk-to-hold
+    0
+    (goal-is-to action hold argument1 ?obj)
+    (thing name ?obj location ?place on-top-of ?surf weight light
+      (not= ?surf ceiling))
+    (monkey location ?loc
+      (not= ?loc ?place))
+    (not goal-is-to action walk-to argument1 ?place)
+    =>
+    (asser goal-is-to action walk-to argument1 ?place))
+*/
+reactor.createRule("drop-to-hold",
+    0,
+    {goal: Goal, thing: Thing, monkey: Monkey},
+    function(goal,thing,monkey) {
+    	return goal.action=="hold" &&
+    	thing.name==goal.argument1 &&
+    	thing.weight=="light" &&
+    	monkey.location==thing.location &&
+    	monkey.onTopOf==thing.onTopOf &&
+    	monkey.holding!=null &&
+    	not(exists({othergoal: Goal},function(othergoal) { return othergoal.action="hold" && othergoal.argument1==null; }));
+    },
+    function(thing) {
+    	assert(new Goal("hold",null));
+    });
+/*
+  (drop-to-hold
+    0
+    (goal-is-to action hold argument1 ?obj)
+    (thing name ?obj location ?place on-top-of ?on weight light)
+    (monkey location ?place on-top-of ?on holding ?hold
+      (not= ?hold blank))
+    (not goal-is-to action hold argument1 blank)
+    =>
+    (asser goal-is-to action hold argument1 blank))
+*/
+reactor.createRule("grab-object",
+    0,
+    {goal: Goal, thing: Thing, monkey: Monkey},
+    function(goal,thing,monkey) {
+    	return goal.action=="hold" &&
+    	thing.name==goal.name &&
+    	thing.weight=="light" &&
+    	monkey.onTopOf==thing.onTopOf &&
+    	monkey.holding==null
+    },
+    function(goal,thing,monkey) {
+    	console.log("Monkey grabs the ", goal.name);
+    	thing.location = "held";
+    	monkey.holding = goal.name;
+    	// retract goal
+    });
+/*
+  (grab-object
+    0
+    ?goal (goal-is-to action hold argument1 ?name)
+    ?thing (thing name ?name location ?place on-top-of ?on weight light)
+    ?monkey (monkey location ?place on-top-of ?on holding blank)
+    =>
+    (println (str "Monkey grabs the " ?name "." ))
+    (modify ?thing location held on-top-of held)
+    (modify ?monkey holding ?name)
+    (retract ?goal))
+*/
+reactor.createRule("drop-object",
+    0,
+    {goal: Goal, thing: Thing, monkey: Monkey},
+    function(goal,thing,monkey) {
+    	return goal.action=="hold" &&
+    	goal.argument1==null &&
+    	monkey.holding!=null &&
+    	thing.name==monkey.holding
+    },
+    function(goal,thing,monkey) {
+    	console.log("Monkey drops the ", thing.name);
+    	thing.location = monkey.location;
+    	thing.onTopOf = monkey.onTopOf;
+    	monkey.holding = null;
+    	// retract goal
+    });
+ /*
+  (drop-object
+    0
+    ?goal (goal-is-to action hold argument1 blank)
+    ?monkey (monkey location ?place on-top-of ?on holding ?name
+      (not= ?name blank))
+    ?thing (thing name ?name)
+    =>
+    (println (str "Monkey drops the " ?name "." ))
+    (modify ?monkey holding blank)
+    (modify ?thing location ?place on-top-of ?on)
+    (retract ?goal))
+*/
+reactor.createRule("unlock-chest-to-move-object",
+    0,
+    {goal: Goal, chest: Chest},
+    function(goal,chest) {
+    	return goal.action=="move" &&
+    	chest.contents==goal.argument1 &&
+    	not(exists({othergoal: Goal},function(othergoal) { return othergoal.action="unlock" && othergoal.argument1==chest.name; }));
+    },
+    function(chest) {
+    	assert(new Goal("unlock",chest.name));
+    });
+/*
+  (unlock-chest-to-move-object
+    0
+    (goal-is-to action move argument1 ?obj argument2 ?place)
+    (chest name ?chest contents ?obj)
+    (not goal-is-to action unlock argument1 ?chest)
+    =>
+    (asser goal-is-to action unlock argument1 ?chest))
+*/
+reactor.createRule("hold-object-to-move",
+    0,
+    {goal: Goal, thing: Thing, monkey: Monkey},
+    function(goal,thing,monkey) {
+    	return goal.action=="move" &&
+    	thing.name==goal.argument1 &&
+    	thing.weight=="light" &&
+    	thing.location!=goal.argument2 &&
+    	monkey.holding!=goal.argument1 &&
+    	not(exists({othergoal: Goal},function(othergoal) { return othergoal.action="hold" && othergoal.argument1==goal.argument1; }));
+    },
+    function(goal) {
+    	assert(new Goal("hold",goal.argument1));
+    });
+/*
+  (hold-object-to-move
+    0
+    (goal-is-to action move argument1 ?obj argument2 ?place)
+    (thing name ?obj location ?loc weight light
+      (not= ?loc ?place))
+    (monkey holding ?hold
+      (not= ?hold ?obj))
+    (not goal-is-to action hold argument1 ?obj)
+    =>
+    (asser goal-is-to action hold argument1 ?obj))
+*/
+reactor.createRule("move-object-to-place",
+    0,
+    {goal: Goal, monkey: Monkey},
+    function(goal,monkey) {
+    	return goal.action=="move" &&
+    	monkey.location!=goal.argument2 &&
+    	not(exists({othergoal: Goal},function(othergoal) { return othergoal.action="walk to" && othergoal.argument1==goal.argument1; }));
+    },
+    function(goal) {
+    	assert(new Goal("walk to",goal.argument1));
+    });
+/*
+  (move-object-to-place
+    0
+    (goal-is-to action move argument1 ?obj argument2 ?place)
+    (monkey location ?loc holding ?obj
+      (not= ?loc ?place))
+    (not goal-is-to action walk-to argument1 ?place)
+    =>
+    (asser goal-is-to action walk-to argument1 ?place))
+*/
+reactor.createRule("drop-object-once-moved",
+    0,
+    {goal: Goal, thing: Thing, monkey: Monkey},
+    function(goal,thing,monkey) {
+    	return goal.action=="move" &&
+    	monkey.location!=goal.argument2 &&
+    	monkey.holding==goal.argument1 &&
+    	thing.name==goal.argument1 &&
+    	thing.weight=="light"
+    },
+    function(thing,monkey) {
+    	console.log("Monkey drops the ",thing.name);
+    	monkey.holding = null;
+    	thing.location = monkey.location;
+    	thing.onTopOf = "floor";
+    	// retract goal
+    });
+/*
+  (drop-object-once-moved
+    0
+    ?goal (goal-is-to action move argument1 ?name argument2 ?place)
+    ?monkey (monkey location ?place holding ?obj)
+    ?thing (thing name ?name weight light)
+    =>
+    (println (str "Monkey drops the " ?name "." ))
+    (modify ?monkey holding blank)
+    (modify ?thing location ?place on-top-of floor)
+    (retract ?goal))
+*/
+reactor.createRule("already-moved-object",
+    0,
+    {goal: Goal, thing: Thing},
+    function(goal,thing) {
+    	return goal.action=="move" &&
+    	thing.name==goal.argument1 &&
+    	thing.location==goal.argument2
+    },
+    function(goal) {
+    	// retract goal
+    });
+/*
+  (already-moved-object
+    0
+    ?goal (goal-is-to action move argument1 ?obj argument2 ?place)
+    (thing name ?obj location ?place)
+    =>
+    (retract ?goal))
+
+  (already-at-place
+    0
+    ?goal (goal-is-to action walk-to argument1 ?place)
+    (monkey location ?place)
+    =>
+    (retract ?goal))
+
+  (get-on-floor-to-walk
+    0
+    (goal-is-to action walk-to argument1 ?place)
+    (monkey location ?loc on-top-of ?surf
+      ((not= ?loc ?place)
+       (not= ?surf floor)))
+    (not goal-is-to action on argument1 floor)
+    =>
+    (asser goal-is-to action on argument1 floor))
+
+  (walk-holding-nothing
+    0
+    ?goal (goal-is-to action walk-to argument1 ?place)
+    ?monkey (monkey location ?loc on-top-of floor holding blank
+      (not= ?loc ?place))
+    =>
+    (println (str "Monkey walks to " ?place "." ))
+    (modify ?monkey location ?place)
+    (retract ?goal))
+
+  (walk-holding-object
+    0
+    ?goal (goal-is-to action walk-to argument1 ?place)
+    ?monkey (monkey location ?loc on-top-of floor holding ?obj
+      ((not= ?loc ?place)
+       (not= ?obj blank)))
+    =>
+    (println (str "Monkey walks to " ?place " holding the " ?obj "." ))
+    (modify ?monkey location ?place)
+    (retract ?goal))
+
+  (jump-onto-floor
+    0
+    ?goal (goal-is-to action on argument1 floor)
+    ?monkey (monkey on-top-of ?on
+      (not= ?on floor))
+    =>
+    (println (str "Monkey jumps off the " ?on " onto the floor." ))
+    (modify ?monkey on-top-of floor)
+    (retract ?goal))
+
+  (walk-to-place-to-climb
+    0
+    (goal-is-to action on argument1 ?obj)
+    (thing name ?obj location ?place)
+    (monkey location ?loc
+      (not= ?loc ?place))
+    (not goal-is-to action walk-to argument1 ?place)
+    =>
+    (asser goal-is-to action walk-to argument1 ?place))
+
+  (drop-to-climb
+    0
+    (goal-is-to action on argument1 ?obj)
+    (thing name ?obj location ?place)
+    (monkey location ?place holding ?hold
+      (not= ?hold blank))
+    (not goal-is-to action hold argument1 blank)
+    =>
+    (asser goal-is-to action hold argument1 blank))
+
+  (climb-indirectly
+    0
+    (goal-is-to action on argument1 ?obj)
+    (thing name ?obj location ?place on-top-of ?on)
+    (monkey location ?place on-top-of ?on2 holding blank
+      ((not= ?on2 ?on)
+       (not= ?on2 ?obj)))
+    (not goal-is-to action on argument1 ?on)
+    =>
+    (asser goal-is-to action on argument1 ?on))
+
+  (climb-directly
+    0
+    ?goal (goal-is-to action on argument1 ?obj)
+    (thing name ?obj location ?place on-top-of ?on)
+    ?monkey (monkey location ?place on-top-of ?on holding blank)
+    =>
+    (println (str "Monkey climbs onto the " ?obj "." ))
+    (modify ?monkey on-top-of ?obj)
+    (retract ?goal))
+
+  (already-on-object
+    0
+    ?goal (goal-is-to action on argument1 ?obj)
+    (monkey on-top-of ?obj)
+    =>
+    (retract ?goal))
+*/
+reactor.createRule("hold-to-eat",
+    0,
+    {goal: Goal, monkey: Monkey},
+    function(goal,monkey) {
+    	return goal.action=="eat" &&
+    	monkey.holding!=goal.argument1 &&
+    	not(exists({othergoal: Goal},function(othergoal) { return othergoal.action=="hold" && othergoal.argument1==goal.argument1}));
+    },
+    function(goal) {
+    	assert(new Goal("hold",goal.argument1));
+    });
+/*    
+  (hold-to-eat
+    0
+    (goal-is-to action eat argument1 ?obj)
+    (monkey holding ?h
+      (not= ?h ?obj))
+    (not goal-is-to action hold argument1 ?obj)
+    =>
+    (asser goal-is-to action hold argument1 ?obj))
+
+  (satisfy-hunger
+    0
+    ?goal (goal-is-to action eat argument1 ?name)
+    ?monkey (monkey holding ?name)
+    ?thing (thing name ?name)
+    =>
+    (println (str "Monkey eats the " ?name "." ))
+    (modify ?monkey holding blank)
+    (retract ?goal ?thing)))
+
+*/
+
+reactor.trace(2);
+reactor.assert([new Monkey("t5-7","green couch",null),
+	new Thing("green couch","t5-7","heavy","floor"),
+	new Thing("red couch","t2-2","heavy","floor"),
+	new Thing("big pillow","t2-2","light","red couch"),
+	new Thing("red chest","t2-2","light","big pillow"),
+	new Thing("blue chest","t7-7","light","ceiling"),
+	new Thing("blue couch","t8-8","heavy","floor"),
+	new Thing("green chest","t8-8","light","ceiling"),
+	new Thing("red key","t1-3","light","floor"),
+	new Chest("red chest","ladder","red key"),
+	new Chest("blue chest","bananas","blue key"),
+	new Chest("green chest","blue key","red key"),
+	new Goal("eat","bananas")]);
+reactor.run(60);
+
+/*
+(facts
+  (monkey location t5-7 on-top-of green-couch holding blank)
+  (thing name green-couch location t5-7 weight heavy on-top-of floor)
+  (thing name red-couch location t2-2 weight heavy on-top-of floor)
+  (thing name big-pillow location t2-2 on-top-of red-couch weight light)
+  (thing name red-chest location t2-2 on-top-of big-pillow weight light)
+  (chest name red-chest contents ladder unlocked-by red-key)
+  (thing name blue-chest location t7-7 on-top-of ceiling weight light)
+  (chest name blue-chest contents bananas unlocked-by blue-key)
+  (thing name blue-couch location t8-8 weight heavy on-top-of floor)
+  (thing name green-chest location t8-8 on-top-of ceiling weight light)
+  (chest name green-chest contents blue-key unlocked-by red-key)
+  (thing name red-key location t1-3 on-top-of floor weight light)
+  (goal-is-to action eat argument1 bananas)))
+*/
+
+
+/*
+((templates
+  (monkey
+    location
+    on-top-of
+    holding)
+
+  (thing
+    name
+    location
+    on-top-of
+    weight)
+
+  (chest
+    name
+    contents
+    unlocked-by)
+
+  (goal-is-to
+    action
+    argument1
+    argument2))
+(rules
+  (hold-chest-to-put-on-floor
+    0
+    (goal-is-to action unlock argument1 ?chest)
+    (thing name ?chest on-top-of ?surf weight light
+      (not= ?surf floor))
+    (monkey holding ?thing
+      (not= ?thing ?chest))
+    (not goal-is-to action hold argument1 ?chest)
+    =>
+    (asser goal-is-to action hold argument1 ?chest))
+
+  (put-chest-on-floor
+    0
+    (goal-is-to action unlock argument1 ?chest)
+    ?monkey (monkey location ?place on-top-of ?on holding ?chest)
+    ?thing (thing name ?chest)
+    =>
+    (println (str "Monkey throws the " ?chest " off the " ?on " onto the floor." ))
+    (modify ?monkey holding blank)
+    (modify ?thing location ?place on-top-of floor))
+
+  (get-key-to-unlock
+    0
+    (goal-is-to action unlock argument1 ?obj)
+    (thing name ?obj on-top-of floor)
+    (chest name ?obj unlocked-by ?key)
+    (monkey holding ?thing
+      (not= ?thing ?key))
+    (not goal-is-to action hold argument1 ?key)
+    =>
+    (asser goal-is-to action hold argument1 ?key))
+
+  (move-to-chest-with-key
+    0
+    (goal-is-to action unlock argument1 ?chest)
+    (monkey location ?mplace holding ?key)
+    (thing name ?chest location ?cplace on-top-of floor
+      (not= ?cplace ?mplace))
+    (chest name ?chest unlocked-by ?key)
+    (not goal-is-to action walk-to argument1 ?cplace)
+    =>
+    (asser goal-is-to action walk-to argument1 ?cplace))
+
+  (unlock-chest-with-key
+    0
+    ?goal (goal-is-to action unlock argument1 ?name)
+    ?chest (chest name ?name contents ?contents unlocked-by ?key)
+    (thing name ?name location ?place on-top-of ?on)
+    (monkey location ?place on-top-of ?on holding ?key)
+    =>
+    (println (str "Monkey opens the " ?name " with the " ?key " revealing the " ?contents "." ))
+    (modify ?chest contents nothing)
+    (asser thing name ?contents location ?place on-top-of ?name weight light)
+    (retract ?goal))
+
+  (unlock-chest-to-hold-object
+    0
+    (goal-is-to action hold argument1 ?obj)
+    (chest name ?chest contents ?obj)
+    (not goal-is-to action unlock argument1 ?chest)
+    =>
+    (asser goal-is-to action unlock argument1 ?chest))
+
+  (use-ladder-to-hold
+    0
+    (goal-is-to action hold argument1 ?obj)
+    (thing name ?obj location ?place on-top-of ceiling weight light)
+    (not thing name ladder location ?place)
+    (not goal-is-to action move argument1 ladder argument2 ?place)
+    =>
+    (asser goal-is-to action move argument1 ladder argument2 ?place))
+
+  (climb-ladder-to-hold
+    0
+    (goal-is-to action hold argument1 ?obj)
+    (thing name ?obj location ?place on-top-of ceiling weight light)
+    (thing name ladder location ?place on-top-of floor)
+    (monkey on-top-of ?s
+      (not= ?s ladder))
+    (not goal-is-to action on argument1 ladder)
+    =>
+    (asser goal-is-to action on argument1 ladder))
+
+  (grab-object-from-ladder
+   0
+   ?goal (goal-is-to action hold argument1 ?name)
+   ?thing (thing name ?name location ?place on-top-of ceiling weight light)
+   (thing name ladder location ?place)
+   ?monkey (monkey location ?place on-top-of ladder holding blank)
+   =>
+   (println (str "Monkey grabs the " ?name "." ))
+   (modify ?thing location held on-top-of held)
+   (modify ?monkey holding ?name)
+   (retract ?goal))
+
+  (climb-to-hold
+    0
+    (goal-is-to action hold argument1 ?obj)
+    (thing name ?obj location ?place on-top-of ?on weight light
+      (not= ?on ceiling))
+    (monkey location ?place on-top-of ?surf
+      (not= ?surf ?on))
+    (not goal-is-to action on argument1 ?on)
+    =>
+    (asser goal-is-to action on argument1 ?on))
+
+  (walk-to-hold
+    0
+    (goal-is-to action hold argument1 ?obj)
+    (thing name ?obj location ?place on-top-of ?surf weight light
+      (not= ?surf ceiling))
+    (monkey location ?loc
+      (not= ?loc ?place))
+    (not goal-is-to action walk-to argument1 ?place)
+    =>
+    (asser goal-is-to action walk-to argument1 ?place))
+
+  (drop-to-hold
+    0
+    (goal-is-to action hold argument1 ?obj)
+    (thing name ?obj location ?place on-top-of ?on weight light)
+    (monkey location ?place on-top-of ?on holding ?hold
+      (not= ?hold blank))
+    (not goal-is-to action hold argument1 blank)
+    =>
+    (asser goal-is-to action hold argument1 blank))
+
+  (grab-object
+    0
+    ?goal (goal-is-to action hold argument1 ?name)
+    ?thing (thing name ?name location ?place on-top-of ?on weight light)
+    ?monkey (monkey location ?place on-top-of ?on holding blank)
+    =>
+    (println (str "Monkey grabs the " ?name "." ))
+    (modify ?thing location held on-top-of held)
+    (modify ?monkey holding ?name)
+    (retract ?goal))
+
+  (drop-object
+    0
+    ?goal (goal-is-to action hold argument1 blank)
+    ?monkey (monkey location ?place on-top-of ?on holding ?name
+      (not= ?name blank))
+    ?thing (thing name ?name)
+    =>
+    (println (str "Monkey drops the " ?name "." ))
+    (modify ?monkey holding blank)
+    (modify ?thing location ?place on-top-of ?on)
+    (retract ?goal))
+
+  (unlock-chest-to-move-object
+    0
+    (goal-is-to action move argument1 ?obj argument2 ?place)
+    (chest name ?chest contents ?obj)
+    (not goal-is-to action unlock argument1 ?chest)
+    =>
+    (asser goal-is-to action unlock argument1 ?chest))
+
+  (hold-object-to-move
+    0
+    (goal-is-to action move argument1 ?obj argument2 ?place)
+    (thing name ?obj location ?loc weight light
+      (not= ?loc ?place))
+    (monkey holding ?hold
+      (not= ?hold ?obj))
+    (not goal-is-to action hold argument1 ?obj)
+    =>
+    (asser goal-is-to action hold argument1 ?obj))
+
+  (move-object-to-place
+    0
+    (goal-is-to action move argument1 ?obj argument2 ?place)
+    (monkey location ?loc holding ?obj
+      (not= ?loc ?place))
+    (not goal-is-to action walk-to argument1 ?place)
+    =>
+    (asser goal-is-to action walk-to argument1 ?place))
+
+  (drop-object-once-moved
+    0
+    ?goal (goal-is-to action move argument1 ?name argument2 ?place)
+    ?monkey (monkey location ?place holding ?obj)
+    ?thing (thing name ?name weight light)
+    =>
+    (println (str "Monkey drops the " ?name "." ))
+    (modify ?monkey holding blank)
+    (modify ?thing location ?place on-top-of floor)
+    (retract ?goal))
+
+  (already-moved-object
+    0
+    ?goal (goal-is-to action move argument1 ?obj argument2 ?place)
+    (thing name ?obj location ?place)
+    =>
+    (retract ?goal))
+
+  (already-at-place
+    0
+    ?goal (goal-is-to action walk-to argument1 ?place)
+    (monkey location ?place)
+    =>
+    (retract ?goal))
+
+  (get-on-floor-to-walk
+    0
+    (goal-is-to action walk-to argument1 ?place)
+    (monkey location ?loc on-top-of ?surf
+      ((not= ?loc ?place)
+       (not= ?surf floor)))
+    (not goal-is-to action on argument1 floor)
+    =>
+    (asser goal-is-to action on argument1 floor))
+
+  (walk-holding-nothing
+    0
+    ?goal (goal-is-to action walk-to argument1 ?place)
+    ?monkey (monkey location ?loc on-top-of floor holding blank
+      (not= ?loc ?place))
+    =>
+    (println (str "Monkey walks to " ?place "." ))
+    (modify ?monkey location ?place)
+    (retract ?goal))
+
+  (walk-holding-object
+    0
+    ?goal (goal-is-to action walk-to argument1 ?place)
+    ?monkey (monkey location ?loc on-top-of floor holding ?obj
+      ((not= ?loc ?place)
+       (not= ?obj blank)))
+    =>
+    (println (str "Monkey walks to " ?place " holding the " ?obj "." ))
+    (modify ?monkey location ?place)
+    (retract ?goal))
+
+  (jump-onto-floor
+    0
+    ?goal (goal-is-to action on argument1 floor)
+    ?monkey (monkey on-top-of ?on
+      (not= ?on floor))
+    =>
+    (println (str "Monkey jumps off the " ?on " onto the floor." ))
+    (modify ?monkey on-top-of floor)
+    (retract ?goal))
+
+  (walk-to-place-to-climb
+    0
+    (goal-is-to action on argument1 ?obj)
+    (thing name ?obj location ?place)
+    (monkey location ?loc
+      (not= ?loc ?place))
+    (not goal-is-to action walk-to argument1 ?place)
+    =>
+    (asser goal-is-to action walk-to argument1 ?place))
+
+  (drop-to-climb
+    0
+    (goal-is-to action on argument1 ?obj)
+    (thing name ?obj location ?place)
+    (monkey location ?place holding ?hold
+      (not= ?hold blank))
+    (not goal-is-to action hold argument1 blank)
+    =>
+    (asser goal-is-to action hold argument1 blank))
+
+  (climb-indirectly
+    0
+    (goal-is-to action on argument1 ?obj)
+    (thing name ?obj location ?place on-top-of ?on)
+    (monkey location ?place on-top-of ?on2 holding blank
+      ((not= ?on2 ?on)
+       (not= ?on2 ?obj)))
+    (not goal-is-to action on argument1 ?on)
+    =>
+    (asser goal-is-to action on argument1 ?on))
+
+  (climb-directly
+    0
+    ?goal (goal-is-to action on argument1 ?obj)
+    (thing name ?obj location ?place on-top-of ?on)
+    ?monkey (monkey location ?place on-top-of ?on holding blank)
+    =>
+    (println (str "Monkey climbs onto the " ?obj "." ))
+    (modify ?monkey on-top-of ?obj)
+    (retract ?goal))
+
+  (already-on-object
+    0
+    ?goal (goal-is-to action on argument1 ?obj)
+    (monkey on-top-of ?obj)
+    =>
+    (retract ?goal))
+
+
+  (hold-to-eat
+    0
+    (goal-is-to action eat argument1 ?obj)
+    (monkey holding ?h
+      (not= ?h ?obj))
+    (not goal-is-to action hold argument1 ?obj)
+    =>
+    (asser goal-is-to action hold argument1 ?obj))
+
+  (satisfy-hunger
+    0
+    ?goal (goal-is-to action eat argument1 ?name)
+    ?monkey (monkey holding ?name)
+    ?thing (thing name ?name)
+    =>
+    (println (str "Monkey eats the " ?name "." ))
+    (modify ?monkey holding blank)
+    (retract ?goal ?thing)))
+
+(functions)
+
+(facts
+  (monkey location t5-7 on-top-of green-couch holding blank)
+  (thing name green-couch location t5-7 weight heavy on-top-of floor)
+  (thing name red-couch location t2-2 weight heavy on-top-of floor)
+  (thing name big-pillow location t2-2 on-top-of red-couch weight light)
+  (thing name red-chest location t2-2 on-top-of big-pillow weight light)
+  (chest name red-chest contents ladder unlocked-by red-key)
+  (thing name blue-chest location t7-7 on-top-of ceiling weight light)
+  (chest name blue-chest contents bananas unlocked-by blue-key)
+  (thing name blue-couch location t8-8 weight heavy on-top-of floor)
+  (thing name green-chest location t8-8 on-top-of ceiling weight light)
+  (chest name green-chest contents blue-key unlocked-by red-key)
+  (thing name red-key location t1-3 on-top-of floor weight light)
+  (goal-is-to action eat argument1 bananas)))
+*/
+</script>
+
+<script>
+document.write("<pre>" + document.getElementById("example").textContent + "</pre>"); 
+</script>
+</body></html>
