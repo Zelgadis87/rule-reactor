@@ -1,0 +1,64 @@
+<html>
+<head>
+<script src="../browser/rule-reactor.js"></script>
+</head>
+<body>
+<script>
+var reactor = new RuleReactor();
+
+function Person(r) { Object.assign(this, r); }
+function Home(r) { Object.assign(this, r); }
+
+LL = console.log;
+
+reactor.createRule("has-a-home", 0, {p: Person, h: Home},
+        function(p, h) { return p.home_id == h.id; },
+        function(p, h) { LL("person", p.name, "has home", h.id); }
+);
+
+reactor.createRule("stop", -100, {},
+    function() { return true; },
+    function() { reactor.stop(); }
+);
+
+reactor.trace(0);
+
+// define objects
+for (var i=0; i<4; i++) {
+        reactor.assert(new Person({name: "p"+i, home_id: i}));
+}
+for (var i=0; i<4; i++) {
+        reactor.assert(new Home({id: i}));
+}
+
+function runReactor(cb) {
+        reactor.run(Infinity, false, function() {
+                console.log("Data Count: ", reactor.data.size);
+                console.log("Executions: ", reactor.run.executions);
+                console.log("RPS: ", reactor.run.rps);
+                Object.keys(reactor.rules).forEach(function(rulename) {
+                        var rule = reactor.rules[rulename];
+                        console.log(rule.name, "-- matches:"+rule.potentialMatches,
+                                "tested:"+rule.tested, "activated:"+rule.activated, "fired:"+rule.fired);
+                });
+                if (cb) cb();
+        });
+}
+
+
+LL("restart");
+runReactor(function() {
+        // now add one fact and re-run the reactor, no rules should fire
+        LL("add");
+        reactor.assert(new Home({id: 5}));
+        runReactor(function() {
+        	LL("add");
+        	 // now add one fact and re-run the reactor, one should fire
+            reactor.assert(new Home({id: 3}));
+            runReactor();
+        });
+});
+
+</script>
+</body>
+</html>

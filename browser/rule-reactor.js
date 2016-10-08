@@ -973,18 +973,13 @@ var uuid = require("uuid");
 			}
 		});
 		// test all associated rules
-		var rulestotest = {};
 		instancestoprocess.forEach(function(instance) {
 			if(instance.rules) {
 				Object.keys(instance.rules).forEach(function(rulename) {
 					var rule = instance.rules[rulename];
-					//promises.push(instance.rules[ruleinstance].test(instance));
-					rulestotest[rulename] = rule;
+					rule.test(instance);
 				});
 			}
-		});
-		Object.keys(rulestotest).forEach(function(rulename) {
-			rulestotest[rulename].test();
 		});
 		if(callback) {
 			callback(null);

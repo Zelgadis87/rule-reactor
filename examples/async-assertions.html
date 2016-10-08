@@ -1,0 +1,53 @@
+<html>
+<body>
+
+<p>Open in debugger to see rule activity</p>
+<script src="../node_modules/bluebird/js/browser/bluebird.js"></script>
+<script src="../browser/rule-reactor.js"></script>
+<script id="example">
+var reactor = new RuleReactor({},true);
+function assert() { return reactor.assert.apply(reactor,arguments); }
+
+
+reactor.createRule("match",0,{number: Number},
+	function(number) {
+		return number>0;
+	},
+	function(number) {
+		console.log(number);
+	});
+reactor.createRule("stop",0,{number: Number},
+	function(number) {
+		return number==0;
+	},
+	function(number) {
+		console.log(number);
+		reactor.stop();
+	});
+
+reactor.trace(2);
+
+var n = new Number(1);
+reactor.assert(n);
+reactor.run(Infinity);
+
+
+/* The setTimeout calls below could actually be HTTP handlers that parse HTTP requests and assert data into the reactor. */
+setTimeout(function() {
+	reactor.assert(new Number(2));
+},1000);
+
+setTimeout(function() {
+	reactor.assert(new Number(3));
+},2000);
+
+setTimeout(function() {
+	reactor.assert(new Number(0));
+},3000);
+
+</script>
+
+<script>
+document.write("<pre>" + document.getElementById("example").textContent + "</pre>"); 
+</script>
+</body></html>
