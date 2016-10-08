@@ -1,0 +1,26 @@
+<html>
+<head>
+<script src="../browser/rule-reactor.js"></script>
+</head>
+<body>
+<script>
+var reactor = new RuleReactor();
+reactor.trace(3);
+
+function Instance(i) { Object.assign(this, i); }
+reactor.assert(new Instance({a:1}));
+
+reactor.createRule("test", 0, {i: Instance},
+        function(i) { return i.a==1; },
+        function(i) { 
+        	console.log(i);
+        	reactor.stop();
+        }
+);
+
+
+reactor.run(Infinity);
+
+</script>
+</body>
+</html>

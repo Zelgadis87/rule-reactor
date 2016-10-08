@@ -279,6 +279,8 @@ For code quality assessment purposes, the cyclomatic complexity threshold is set
 
 # Updates (reverse chronological order)
 
+2016-10-08 v0.1.3 Testing fix for issue #15. Not pushed to npm. See test/issue15.html.
+
 2016-10-08 v0.1.2 Fixed issue #10 and #11 courtesy of @tve. Added test case test/issue11.html. Added example async-assertions.html to provide some guidance on how to integrated with an http server. An example using an actually http server will be forthcoming.
 
 2016-09-14 v0.1.1 Enhanced family example to address question posed in [Issue 2](https://github.com/anywhichway/rule-reactor/issues/2) regarding embedded object matching.
