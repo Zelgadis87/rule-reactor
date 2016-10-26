@@ -398,4 +398,4 @@ Typically optimizing the stack increases performance (although it may vary acros
 
 # License
 
-This software is provided as-is under the [AGPL 3.0 license](https://opensource.org/licenses/AGPL-3.0).
+This software is provided as-is under the [MIT license](https://opensource.org/licenses/MIT).

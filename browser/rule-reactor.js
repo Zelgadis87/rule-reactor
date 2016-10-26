@@ -532,6 +532,7 @@ var uuid = require("uuid");
 		if(me.reactor.tracelevel>2) {
 			Console.log("New Rule: ",me);
 		}
+		me.bindInstances(true);
 	} 
 	Rule.prototype.bind = function(instance,test) {
 		var me = this, variables = Object.keys(me.bindings);
@@ -546,6 +547,14 @@ var uuid = require("uuid");
 		if(test) {
 			return me.test(instance);
 		}
+	}
+	Rule.prototype.bindInstances = function(test) {
+		var me = this, variables = Object.keys(me.domain);
+		variables.forEach(function(variable) {
+			me.domain[variable].instances.forEach(function(instance) {
+				me.bind(instance,test);
+			});
+		});
 	}
 	Rule.prototype.delete = function() {
 		var me = this, variables = Object.keys(me.domain);
@@ -862,7 +871,7 @@ var uuid = require("uuid");
 						}
 					});
 				}
-				Object.keys(instance.activeKeys).forEach(function(key) {
+				keys.forEach(function(key) {
 					function rrget() {
 						return rrget.value;
 					}
