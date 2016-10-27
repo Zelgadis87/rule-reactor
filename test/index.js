@@ -333,6 +333,7 @@ describe("rule-reactor ", function() {
 		rule.delete();
 	});
 	it("should order by salience",function() {
+		delete Number.instances;
 		var reactor = new RuleReactor();
 		var to = new Number(1);
 		var rule1 = reactor.createRule("rule one",1,{t1:Number},
@@ -357,6 +358,7 @@ describe("rule-reactor ", function() {
 		rule2.delete();
 	});
 	it("should order by salience and timestamp",function() {
+		delete Number.instances;
 		var reactor = new RuleReactor();
 		var to1 = new Number(1), to2 = new Number(1);
 		var rule1 = reactor.createRule("rule one",0,{t1:Number},
@@ -375,6 +377,7 @@ describe("rule-reactor ", function() {
 		},1000);
 	});
 	it("should support rule reset",function() {
+		delete Number.instances;
 		var reactor = new RuleReactor();
 		var to = new Number(1);
 		var rule = reactor.createRule("rule",1,{t1:Number},

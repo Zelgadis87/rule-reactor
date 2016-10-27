@@ -276,8 +276,12 @@ For code quality assessment purposes, the cyclomatic complexity threshold is set
 
 # Notes
 
+There is a potential design flaw related to running multiple reactors. When objects are asserted to working memory their constructors are augmented with a member `instances`. The instances persist across reactor creations, i.e. the working memory of reactors is not isolated to a given reactor; hence, creating a new reactory may have rules that fire unexpectedly. It is arguable that the sharing of working memory may be useful in some situations, so the behavior has been left in place. A future release may support a config option when creating a reactors to tell it to used shared or private working memory.
+
 
 # Updates (reverse chronological order)
+
+2016-10-27 v0.1.4 Updated unit tests after detecting design flaw. See Notes above. Pushed to npm.
 
 2016-10-08 v0.1.3 Testing fix for issue #15. Not pushed to npm. See test/issue15.html.
 
