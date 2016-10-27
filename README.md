@@ -12,6 +12,17 @@ All rule conditions and actions are expressed as regular JavaScript functions so
 
 At 45K (21K minified) vs 577K (227K minified) for Nools, a comparable speed for many applications, plus a low memory impact pattern and join processor, rule-reactor is perfect for memory constrained apps like those on mobile devices.
 
+Some people interested in rules base programming may also be interested in ReasonDB, which provided rule-like capability itegrated with database streaming analytics capability and SQL like JOQULAR syntax:
+
+```
+ // When a new Person is added to the database, print all possible pairs with the Person except itself.
+   db.when({$p1: {name: {$neq: null},"@key": {$neq: {$p2: "@key"}}}}).select().then((cursor) => {
+		  cursor.forEach((row) => { console.log("Pair:",JSON.stringify(row[0]),JSON.stringify(row[1])); }); 
+   });
+```
+
+ReasonDB is available via NPM at at https://github.com/anywhichway/reasondb.
+
 # Install
 
 npm install rule-reactor
