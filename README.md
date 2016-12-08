@@ -12,7 +12,7 @@ All rule conditions and actions are expressed as regular JavaScript functions so
 
 At 45K (21K minified) vs 577K (227K minified) for Nools, a comparable speed for many applications, plus a low memory impact pattern and join processor, rule-reactor is perfect for memory constrained apps like those on mobile devices.
 
-Some people interested in rules base programming may also be interested in ReasonDB, which provided rule-like capability itegrated with database streaming analytics capability and SQL like JOQULAR syntax:
+Some people interested in rules base programming may also be interested in ReasonDB, which provides rule-like capability itegrated with database streaming analytics capability and SQL like JOQULAR syntax:
 
 ```
  // When a new Person is added to the database, print all possible pairs with the Person except itself.
@@ -21,7 +21,7 @@ Some people interested in rules base programming may also be interested in Reaso
    });
 ```
 
-ReasonDB is available via NPM at at https://github.com/anywhichway/reasondb.
+ReasonDB is available via NPM and at https://github.com/anywhichway/reasondb.
 
 # Install
 
@@ -281,7 +281,7 @@ Preliminary tests show performance close to that of Nools. However, the rule-rea
 
 # Building & Testing
 
-Building, testing and quality assessment are conducted using Travis, Mocha, Chai, Istanbul, Code Climate, and Codacity.
+Building, testing and quality assessment are conducted using Travis, Mocha, Chai, Istanbul, Code Climate, and Codacy.
 
 For code quality assessment purposes, the cyclomatic complexity threshold is set to 10.
 
