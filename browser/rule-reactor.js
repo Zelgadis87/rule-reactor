@@ -14,62 +14,41 @@ var uuid = require("uuid");
 (function() {
 	"use strict";
 	
-	function intersection(array) {
-		var arrays = arguments.length;
-		// fast path when we have nothing to intersect
-		if (arrays === 0) {
-			return [];
-		}
-		if (arrays === 1) {
-			return intersection(array,array);
-		}
-
-		var arg   = 0, // current arg index
-		bits  = 0, // bits to compare at the end
-		count = 0, // unique item count
-		items = [], // unique items
-		match = [], // item bits
-		seen  = new Map(), // item -> index map
-		i;
-
-		do {
-			var arr = arguments[arg],
-			len = arr.length,
-			bit = 1 << arg; // each array is assigned a bit
-			i   = 0;
-
-			if (!len) {
-				return []; // bail out if empty array
-			}
-
-			bits |= bit; // add the bit to the collected bits
-			do {
-				var value = arr[i],
-				index = seen.get(value); // find existing item index
-
-				if (typeof(index) === "undefined") { // new item
-					count++;
-					index = match.length;
-					seen.set(value, index);
-					items[index] = value;
-					match[index] = bit;
-				} else { // update existing item
-					match[index] |= bit;
+	function intersector(objects) {
+		return function intersection() {
+			var min = Infinity, // length of shortest array argument
+				shrtst = 0, // index of shortest array argument
+				set = (objects ? new Set() : {});
+				rslt = [], // result
+				mxj = arguments.length-1;
+			for(var j=0;j<=mxj;j++) { // find index of shortest array argument
+				var l = arguments[j].length;
+				if(l<min) {
+					shrtst = j;
+					min = l;
 				}
-			} while (++i < len);
-		} while (++arg < arrays);
-
-		var result = [];
-		i = 0;
-
-		do { // filter out items that don't have the full bitfield
-			if (match[i] === bits) {
-				result[result.length] = items[i];
 			}
-		} while (++i < count);
-
-		return result;
+			var shrt = arguments[shrtst],
+				mxi = shrt.length;
+			for(var i=0;i<mxi;i++) { // initialize set of possible values from shortest array
+				if(objects) { set.add(shrt[i]) } else { set[shrt[i]]=1 };
+			}
+			for(var j=0;j<=mxj;j++) { // loop through all array arguments
+				var	array = arguments[j],
+					mxk = array.length;
+				for(var k=0;k<mxk;k++) { // loop through all values
+					var item = array[k];
+					if((objects && set.has(item)) || set[item]) { // if value is possible
+						if(j===mxj) { // and all arrays have it (or we would not be at this point)
+							rslt.push(item); // add to results
+						}
+					}
+				}
+			}
+			return rslt;
+		}
 	}
+	var intersection = intersector(false);
 	
 //		portions from http://phrogz.net/lazy-cartesian-product
 	function CXProduct(collections){

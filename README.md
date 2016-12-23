@@ -292,6 +292,8 @@ There is a potential design flaw related to running multiple reactors. When obje
 
 # Updates (reverse chronological order)
 
+2016-12-23 v0.1.5 Added more performant intersection code. Pushed to npm.
+
 2016-10-27 v0.1.4 Updated unit tests after detecting design flaw. See Notes above. Pushed to npm.
 
 2016-10-08 v0.1.3 Testing fix for issue #15. Not pushed to npm. See test/issue15.html.
