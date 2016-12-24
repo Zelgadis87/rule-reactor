@@ -869,21 +869,23 @@ var uuid = require("uuid");
 								me.assert(value);
 							}
 							// re-test the rules that pattern match the key
-							Object.keys(instance.rules).forEach(function(rulename) {
-								var rule = instance.rules[rulename];
-								if(rule.triggers.some(function(trigger) {
-									return Object.keys(trigger.range).some(function(variable) {
-										return trigger.range[variable][key] && instance instanceof trigger.domain[variable];
-								}); })) {
-									var activations = rule.activations.get(instance);
-									if(activations) {
-										activations.forEach(function(activation) {
-											activation.cancel();
-										});
+							if(instance.rules) { 
+								Object.keys(instance.rules).forEach(function(rulename) {
+									var rule = instance.rules[rulename];
+									if(rule.triggers.some(function(trigger) {
+										return Object.keys(trigger.range).some(function(variable) {
+											return trigger.range[variable][key] && instance instanceof trigger.domain[variable];
+									}); })) {
+										var activations = rule.activations.get(instance);
+										if(activations) {
+											activations.forEach(function(activation) {
+												activation.cancel();
+											});
+										}
+										rule.test(instance,key);
 									}
-									rule.test(instance,key);
-								}
-							});
+								});	
+							}
 							return rrget.value;
 						}
 					}
