@@ -17,7 +17,7 @@ var uuid = require("uuid");
 		return function intersection() {
 			var min = Infinity, // length of shortest array argument
 				shrtst = 0, // index of shortest array argument
-				set = (objects ? new Set() : {});
+				set = (objects ? new Set() : {}),
 				rslt = [], // result
 				mxj = arguments.length-1;
 			for(var j=0;j<=mxj;j++) { // find index of shortest array argument
@@ -30,7 +30,7 @@ var uuid = require("uuid");
 			var shrt = arguments[shrtst],
 				mxi = shrt.length;
 			for(var i=0;i<mxi;i++) { // initialize set of possible values from shortest array
-				if(objects) { set.add(shrt[i]) } else { set[shrt[i]]=1 };
+				if(objects) { set.add(shrt[i]) } else { set[shrt[i]]=1; };
 			}
 			for(var j=0;j<=mxj;j++) { // loop through all array arguments
 				var	array = arguments[j],
@@ -45,7 +45,7 @@ var uuid = require("uuid");
 				}
 			}
 			return rslt;
-		}
+		};
 	}
 	var intersection = intersector(false);
 	
@@ -920,7 +920,7 @@ var uuid = require("uuid");
 											if(rule.triggers.some(function(trigger) {
 												return Object.keys(trigger.range).some(function(variable) {
 													return trigger.range[variable][key] && instance instanceof trigger.domain[variable];
-											})})) {
+											});})) {
 												var activations = rule.activations.get(instance);
 												if(activations) {
 													activations.forEach(function(activation) {
