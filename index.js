@@ -30,7 +30,7 @@ var uuid = require("uuid");
 			var shrt = arguments[shrtst],
 				mxi = shrt.length;
 			for(var i=0;i<mxi;i++) { // initialize set of possible values from shortest array
-				if(objects) { set.add(shrt[i]) } else { set[shrt[i]]=1; };
+				if(objects) { set.add(shrt[i]); } else { set[shrt[i]]=1; }
 			}
 			for(var j=0;j<=mxj;j++) { // loop through all array arguments
 				var	array = arguments[j],
@@ -68,7 +68,7 @@ var uuid = require("uuid");
 			return size - me.start;
 		}
 		return size; 
-	}
+	};
 	CXProduct.prototype.length.size = CXProduct.prototype.length;
 	CXProduct.prototype.every = function(callback,pattern) {
 		function dive(cxproduct,d,counter,collections,lens,p,callback,pattern){
@@ -384,7 +384,8 @@ var uuid = require("uuid");
 	// dummy console so logging can easily be retractd
 	var Console = {};
 	Console.log = function() { 
-		console.log.apply(console,arguments); 
+		var c = console;
+		c.log.apply(console,arguments); 
 	};
 	// uncomment line below to stop logging
 	//Console.log = function() {};

@@ -7,7 +7,7 @@
   "reveal": true,
   "isomorphic": true,
   "scripts": {
-    "test": "istanbul cover node_modules/mocha/bin/_mocha --report lcov -- -R spec",
+    "test": "keys.bat && istanbul cover node_modules/mocha/bin/_mocha --report lcov -- -R spec && cat coverage/lcov.info | node_modules\\.bin\\codacy-coverage && rm -rf coverage",
     "browserify": "browserify index.js -o browser/rule-reactor.js",
     "minify": "minify browser/rule-reactor.js > browser/rule-reactor.min.js",
     "prepublish": "npm run browserify && npm run minify"
@@ -35,13 +35,14 @@
   },
   "homepage": "https://github.com/anywhichway/rule-reactorl#readme",
   "devDependencies": {
-    "chai": "^3.4.1",
-    "codeclimate-test-reporter": "^0.2.0",
-    "istanbul": "^0.4.2",
-    "mocha": "^2.3.4",
     "bluebird": "^3.3.5",
     "browserify": "^13.0.0",
-    "minify": "^2.0.8"
+    "chai": "^3.4.1",
+    "codacy-coverage": "^2.0.0",
+    "codeclimate-test-reporter": "^0.2.0",
+    "istanbul": "^0.4.2",
+    "minify": "^2.0.8",
+    "mocha": "^2.3.4"
   },
   "dependencies": {
     "uuid": "^2.0.1"
