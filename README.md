@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/anywhichway/jovial.svg)](https://travis-ci.org/anywhichway/rule-reactor)
 [![Codacy Badge](https://api.codacy.com/project/badge/grade/08aadbb230624a25a5961aeadf88b4bf)](https://www.codacy.com/app/syblackwell/rule-reactor)
+[![Codacy Badge](https://api.codacy.com/project/badge/Coverage/08aadbb230624a25a5961aeadf88b4bf)](https://www.codacy.com/app/syblackwell/rule-reactor?utm_source=github.com&utm_medium=referral&utm_content=anywhichway/rule-reactor&utm_campaign=Badge_Coverage)
 
 [![NPM](https://nodei.co/npm/rule-reactor.png?downloads=true&downloadRank=true&stars=true)](https://nodei.co/npm/rule-reactor/)
 
@@ -291,6 +292,8 @@ There is a potential design flaw related to running multiple reactors. When obje
 
 
 # Updates (reverse chronological order)
+
+2017-01-15 v0.1.7 Minor code style changes. Added coverage badge.
 
 2016-12-24 v0.1.6 Fixed issue #16.
 
