@@ -293,6 +293,8 @@ There is a potential design flaw related to running multiple reactors. When obje
 
 # Updates (reverse chronological order)
 
+2017-02-20 v0.1.8 Minor code style change to enforce "strict" compliance.
+
 2017-01-15 v0.1.7 Minor code style changes. Added coverage badge.
 
 2016-12-24 v0.1.6 Fixed issue #16.

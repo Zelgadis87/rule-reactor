@@ -18,7 +18,7 @@ var uuid = require("uuid");
 		return function intersection() {
 			var min = Infinity, // length of shortest array argument
 				shrtst = 0, // index of shortest array argument
-				set = (objects ? new Set() : {});
+				set = (objects ? new Set() : {}),
 				rslt = [], // result
 				mxj = arguments.length-1;
 			for(var j=0;j<=mxj;j++) { // find index of shortest array argument
@@ -31,7 +31,7 @@ var uuid = require("uuid");
 			var shrt = arguments[shrtst],
 				mxi = shrt.length;
 			for(var i=0;i<mxi;i++) { // initialize set of possible values from shortest array
-				if(objects) { set.add(shrt[i]) } else { set[shrt[i]]=1 };
+				if(objects) { set.add(shrt[i]); } else { set[shrt[i]]=1; }
 			}
 			for(var j=0;j<=mxj;j++) { // loop through all array arguments
 				var	array = arguments[j],
@@ -46,7 +46,7 @@ var uuid = require("uuid");
 				}
 			}
 			return rslt;
-		}
+		};
 	}
 	var intersection = intersector(false);
 	
@@ -69,7 +69,7 @@ var uuid = require("uuid");
 			return size - me.start;
 		}
 		return size; 
-	}
+	};
 	CXProduct.prototype.length.size = CXProduct.prototype.length;
 	CXProduct.prototype.every = function(callback,pattern) {
 		function dive(cxproduct,d,counter,collections,lens,p,callback,pattern){
@@ -98,7 +98,7 @@ var uuid = require("uuid");
 		if(dive(me,0,{count:0},me.collections,lens,p,callback,pattern)!==false) {
 			return true;
 		}
-	}
+	};
 	CXProduct.prototype.get = function(index,pattern){
 		function get(n,collections,dm,c) {
 			for (var i=collections.length;i--;) { c[i]=collections[i][(n/dm[i][0]<<0)%dm[i][1]]; }
@@ -385,7 +385,8 @@ var uuid = require("uuid");
 	// dummy console so logging can easily be retractd
 	var Console = {};
 	Console.log = function() { 
-		console.log.apply(console,arguments); 
+		var c = console;
+		c.log.apply(console,arguments); 
 	};
 	// uncomment line below to stop logging
 	//Console.log = function() {};
@@ -870,21 +871,23 @@ var uuid = require("uuid");
 								me.assert(value);
 							}
 							// re-test the rules that pattern match the key
-							Object.keys(instance.rules).forEach(function(rulename) {
-								var rule = instance.rules[rulename];
-								if(rule.triggers.some(function(trigger) {
-									return Object.keys(trigger.range).some(function(variable) {
-										return trigger.range[variable][key] && instance instanceof trigger.domain[variable];
-								}); })) {
-									var activations = rule.activations.get(instance);
-									if(activations) {
-										activations.forEach(function(activation) {
-											activation.cancel();
-										});
+							if(instance.rules) { 
+								Object.keys(instance.rules).forEach(function(rulename) {
+									var rule = instance.rules[rulename];
+									if(rule.triggers.some(function(trigger) {
+										return Object.keys(trigger.range).some(function(variable) {
+											return trigger.range[variable][key] && instance instanceof trigger.domain[variable];
+									}); })) {
+										var activations = rule.activations.get(instance);
+										if(activations) {
+											activations.forEach(function(activation) {
+												activation.cancel();
+											});
+										}
+										rule.test(instance,key);
 									}
-									rule.test(instance,key);
-								}
-							});
+								});	
+							}
 							return rrget.value;
 						}
 					}
@@ -919,7 +922,7 @@ var uuid = require("uuid");
 											if(rule.triggers.some(function(trigger) {
 												return Object.keys(trigger.range).some(function(variable) {
 													return trigger.range[variable][key] && instance instanceof trigger.domain[variable];
-											})})) {
+											});})) {
 												var activations = rule.activations.get(instance);
 												if(activations) {
 													activations.forEach(function(activation) {

@@ -97,7 +97,7 @@ var uuid = require("uuid");
 		if(dive(me,0,{count:0},me.collections,lens,p,callback,pattern)!==false) {
 			return true;
 		}
-	}
+	};
 	CXProduct.prototype.get = function(index,pattern){
 		function get(n,collections,dm,c) {
 			for (var i=collections.length;i--;) { c[i]=collections[i][(n/dm[i][0]<<0)%dm[i][1]]; }
