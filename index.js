@@ -12,7 +12,7 @@ var uuid = require("uuid");
 
 (function() {
 	"use strict";
-	
+
 	function intersector(objects) {
 		return function intersection() {
 			var min = Infinity, // length of shortest array argument
@@ -48,7 +48,7 @@ var uuid = require("uuid");
 		};
 	}
 	var intersection = intersector(false);
-	
+
 //		portions from http://phrogz.net/lazy-cartesian-product
 	function CXProduct(collections){
 		var me = this;
@@ -67,15 +67,15 @@ var uuid = require("uuid");
 			}
 			return size - me.start;
 		}
-		return size; 
+		return size;
 	};
 	CXProduct.prototype.length.size = CXProduct.prototype.length;
 	CXProduct.prototype.every = function(callback,pattern) {
 		function dive(cxproduct,d,counter,collections,lens,p,callback,pattern){
 			var a=collections[d], max=collections.length-1,len=lens[d];
 			if (d===max) {
-				for (var i=0;i<len;++i) { 
-					p[d]=a[i]; 
+				for (var i=0;i<len;++i) {
+					p[d]=a[i];
 					if(!callback(p.slice(0),counter.count)) {
 						return false;
 					}
@@ -118,8 +118,8 @@ var uuid = require("uuid");
 		function dive(cxproduct,d,counter,collections,lens,p,callback,pattern){
 			var a=collections[d], max=collections.length-1,len=lens[d];
 			if (d===max) {
-				for (var i=0;i<len;++i) { 
-					p[d]=a[i]; 
+				for (var i=0;i<len;++i) {
+					p[d]=a[i];
 					if(callback(p.slice(0),counter.count)) {
 						return true;
 					}
@@ -148,7 +148,7 @@ var uuid = require("uuid");
 				return true;
 			}
 			i++;
-		} while(i<max); 
+		} while(i<max);
 		return false;
 	}
 	CXProduct.prototype.verify = function(i,row) {
@@ -160,9 +160,9 @@ var uuid = require("uuid");
 		function dive(cxproduct,d,counter,collections,lens,p,callback){
 			var a=collections[d], max=collections.length-1,len=lens[d];
 			if (d===max) {
-				for (var i=0;i<len;++i) { 
-					p[d]=a[i]; 
-					callback(p.slice(0),counter.count); 
+				for (var i=0;i<len;++i) {
+					p[d]=a[i];
+					callback(p.slice(0),counter.count);
 					counter.count++;
 				}
 			} else {
@@ -192,8 +192,8 @@ var uuid = require("uuid");
 		}
 	}
 	CXProduct.prototype.forEach = CXProduct.prototype.forEach1;//	portions from http://phrogz.net/lazy-cartesian-product
-	
-	
+
+
 	function getFunctionArgs(f) {
 		var str = f+"";
 		var start = str.indexOf("(")+1;
@@ -241,7 +241,7 @@ var uuid = require("uuid");
 			// extract instance keys from condition using a side-effect of replace
 			rule.conditions.forEach(function(condition) {
 				(condition+"").replace(new RegExp("(\\b"+variable+"\\.\\w+\\b)","g"),
-					function(match) { 
+					function(match) {
 						var parts = match.split("."),key = parts[1];
 						// cache reactive non-function keys on class prototype
 						if(key.indexOf("(")===-1) {
@@ -274,7 +274,7 @@ var uuid = require("uuid");
 						cons.prototype.rules[rule.name] = rule;
 						cons.prototype.activeKeys = (cons.prototype.activeKeys ? cons.prototype.activeKeys : {});
 						conditionstr.replace(new RegExp("(\\b"+variable+"\\.\\w+\\b)","g"),
-							function(match) { 
+							function(match) {
 								var parts = match.split("."),key = parts[1];
 								// cache reactive non-function keys on class prototype
 								if(key.indexOf("(")===-1) {
@@ -306,7 +306,7 @@ var uuid = require("uuid");
 							cons.prototype.rules[rule.name] = rule;
 							cons.prototype.activeKeys = (cons.prototype.activeKeys ? cons.prototype.activeKeys : {});
 							conditionstr.replace(new RegExp("(\\b"+variable+"\\.\\w+\\b)","g"),
-								function(match) { 
+								function(match) {
 									var parts = match.split("."),key = parts[1];
 									// cache reactive non-function keys on class prototype
 									if(key.indexOf("(")===-1) {
@@ -326,9 +326,6 @@ var uuid = require("uuid");
 		});
 		rule.compiledConditions = [];
 		rule.conditions.forEach(function(condition,i) {
-			if((condition+"").indexOf("return")===-1) {
-				throw new TypeError("Condition function missing a return statereactornt in rule '" + rule.name + "' condition " + i);
-			}
 			var args = getFunctionArgs(condition);
 			condition.required = new Array(args.length);
 			args.forEach(function(arg,j) {
@@ -365,7 +362,7 @@ var uuid = require("uuid");
 				throw new ReferenceError("Referenced domain variable '" + arg + "' undefined in rule '" + rule.name + "' action");
 			}
 			rule.action.required[i] = required;
-			
+
 		});
 		// do not add full compilation since actions are allowed to use closure scope and it will break that
 		rule.compiledAction = function(match) {
@@ -383,13 +380,13 @@ var uuid = require("uuid");
 
 	// dummy console so logging can easily be retractd
 	var Console = {};
-	Console.log = function() { 
+	Console.log = function() {
 		var c = console;
-		c.log.apply(console,arguments); 
+		c.log.apply(console,arguments);
 	};
 	// uncomment line below to stop logging
 	//Console.log = function() {};
-	
+
 	// http://stackoverflow.com/questions/1344500/efficient-way-to-insert-a-number-into-a-sorted-array-of-numbers
 	function insertSorted(arr, item, comparator) {
 		if (comparator == null) {
@@ -512,7 +509,7 @@ var uuid = require("uuid");
 			Console.log("New Rule: ",me);
 		}
 		me.bindInstances(true);
-	} 
+	}
 	Rule.prototype.bind = function(instance,test) {
 		var me = this, variables = Object.keys(me.bindings);
 		variables.map(function(variable) {
@@ -560,7 +557,7 @@ var uuid = require("uuid");
 			me.cxproduct = null;
 			return false;
 		}
-		
+
 		if(!me.cxproduct) {
 			me.cxproduct = new CXProduct(values);
 		}
@@ -622,11 +619,11 @@ var uuid = require("uuid");
 						me.reactor.agenda.splice(i,1);
 					}
 				});
-				
+
 			}
 		});
 	}
-	
+
 	Rule.prototype.unbind = function(instance) {
 		var me = this, variables = Object.keys(me.bindings);
 		variables.map(function(variable) {
@@ -653,7 +650,7 @@ var uuid = require("uuid");
 			primitive = true;
 		} else {
 			keys = Object.keys(instance);
-		}	
+		}
 		keys.forEach(function(key) {
 			index[key] = (index[key] ? index[key] : {});
 			var value = (primitive ? instance.valueOf() : instance[key]), type = typeof(value), valuekey, typekey;
@@ -722,7 +719,7 @@ var uuid = require("uuid");
 			primitive = true;
 		} else {
 			keys = Object.keys(instance);
-		}	
+		}
 		parentkeys = (parentkeys ? parentkeys : []);
 		parentinstances = (parentinstances ? parentinstances : []);
 		return keys.every(function(key) {
@@ -766,7 +763,7 @@ var uuid = require("uuid");
 		var	primitive = false;
 		if(instance instanceof Number || instance instanceof String || instance instanceof Boolean || ["number","string","boolean"].indexOf(typeof(instance))>=0) {
 			primitive = true;
-		}	
+		}
 		parentkeys = (parentkeys ? parentkeys : []);
 		parentinstances = (parentinstances ? parentinstances : []);
 		return Object.keys(index).some(function(key) {
@@ -870,7 +867,7 @@ var uuid = require("uuid");
 								me.assert(value);
 							}
 							// re-test the rules that pattern match the key
-							if(instance.rules) { 
+							if(instance.rules) {
 								Object.keys(instance.rules).forEach(function(rulename) {
 									var rule = instance.rules[rulename];
 									if(rule.triggers.some(function(trigger) {
@@ -885,7 +882,7 @@ var uuid = require("uuid");
 										}
 										rule.test(instance,key);
 									}
-								});	
+								});
 							}
 							return rrget.value;
 						}
@@ -950,7 +947,7 @@ var uuid = require("uuid");
 						desc.get = rrget;
 						desc.set = rrset;
 						Object.defineProperty(instance,key,desc);
-						
+
 					}
 				});
 			}
@@ -1012,12 +1009,12 @@ var uuid = require("uuid");
 			test.cxproduct = new CXProduct(collections);
 			args = getFunctionArgs(test);
 			if(args.length>0) {
-				test.required = args.map(function(variable) { 
+				test.required = args.map(function(variable) {
 					var i = variables.indexOf(variable);
 					if(i===-1) {
 						throw new ReferenceError("Undeclared domain variable '" + variable + "' in universal quantification condition function");
 					}
-					return i; 
+					return i;
 				});
 			}
 		}
@@ -1058,12 +1055,12 @@ var uuid = require("uuid");
 			test.cxproduct = new CXProduct(collections);
 			args = getFunctionArgs(test);
 			if(args.length>0) {
-				test.required = args.map(function(variable) { 
+				test.required = args.map(function(variable) {
 					var i = variables.indexOf(variable);
 					if(i===-1) {
 						throw new ReferenceError("Undeclared domain variable '" + variable + "' in existential quantification condition function");
 					}
-					return i; 
+					return i;
 				});
 			}
 		}
@@ -1197,7 +1194,7 @@ var uuid = require("uuid");
 			} else {
 				this.processor.trace(0);
 			}
-		}	
+		}
 	}
 
 	if (this.exports) {
@@ -1209,4 +1206,3 @@ var uuid = require("uuid");
 		this.RuleReactor = RuleReactor;
 	}
 }).call((typeof(window)!=="undefined" ? window : (typeof(module)!=="undefined" ? module : null)));
-
