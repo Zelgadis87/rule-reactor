@@ -802,6 +802,14 @@ var uuid = require("uuid");
 			});
 		});
 	}
+	function Deferred() {
+		this.resolve = null;
+		this.reject = null;
+		this.promise = new Promise(function(resolve, reject) {
+			this.resolve = resolve;
+			this.reject = reject;
+		}.bind(this));
+	}
 	function RuleReactor (domain,boost) {
 		this.boost = boost;
 		this.rules = {};
@@ -1149,6 +1157,7 @@ var uuid = require("uuid");
 				if(typeof(callback)==="function") {
 					callback();
 				}
+				me.run.stopPromise.resolve();
 				return;
 			}
 			if(me.run.executions<me.run.max) {
@@ -1190,6 +1199,8 @@ var uuid = require("uuid");
 		this.run.stop = new Date();
 		this.run.rps = (this.run.executions / (this.run.stop.getTime() - this.run.start.getTime())) * 1000;
 		this.run.running = false;
+		this.run.stopPromise = new Deferred();
+		return this.run.stopPromise.promise;
 	}
 	RuleReactor.prototype.trace = function(level) {
 		this.tracelevel = level;
