@@ -1152,18 +1152,23 @@ var uuid = require("uuid");
 				return;
 			}
 			if(me.run.executions<me.run.max) {
-				Object.keys(me.triggerlessRules).forEach(function(rulename) {
-					var rule = me.triggerlessRules[rulename], activations = rule.activations.get(); // get's activations associated with undefined domains
-					if(!activations || activations.length===0) {
-						rule.test();
+				try {
+					Object.keys(me.triggerlessRules).forEach(function(rulename) {
+						var rule = me.triggerlessRules[rulename], activations = rule.activations.get(); // get's activations associated with undefined domains
+						if(!activations || activations.length===0) {
+							rule.test();
+						}
+					});
+					while (me.agenda.length>0) {
+						me.dataModified = false;
+						me.agenda[me.agenda.length-1].execute(me.agenda.length-1);
+						if(me.dataModified) {
+							break;
+						}
 					}
-				});
-				while (me.agenda.length>0) {
-					me.dataModified = false;
-					me.agenda[me.agenda.length-1].execute(me.agenda.length-1);
-					if(me.dataModified) {
-						break;
-					}
+				} catch (e) {
+					console.error('Exception in rule-reactor', e);
+					return me.stop();
 				}
 			}
 			setTimeout(run,0);
