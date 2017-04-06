@@ -220,8 +220,14 @@ var uuid = require("uuid");
 			if(!rule.reactor.domain[cons.name]) {
 				rule.reactor.domain[cons.name] = cons;
 			}
-			cons.instances = (cons.instances ? cons.instances : []);
-			cons.index = (cons.index ? cons.index : {});
+
+			if ( !cons.hasOwnProperty('instances') ) {
+				cons.instances = [];
+			}
+			if ( !cons.hasOwnProperty('index') ) {
+				cons.index = [];
+			}
+			
 			cons.prototype.rules = (cons.prototype.rules ? cons.prototype.rules : {});
 			cons.prototype.rules[rule.name] = rule;
 			cons.prototype.activeKeys = (cons.prototype.activeKeys ? cons.prototype.activeKeys : {});
