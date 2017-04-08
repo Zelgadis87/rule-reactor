@@ -1106,7 +1106,7 @@ var uuid = require("uuid");
 					var desc = Object.getOwnPropertyDescriptor(instance,key);
 					if(desc.get && desc.get.name==="rrget") {
 						if(typeof(desc.get.originalDescriptor)==="undefined") {
-							delete instance[key];
+							// delete instance[key];
 						} else {
 							if(desc.get.originalDescriptor.value instanceof Array || Array.isArray(desc.get.originalDescriptor.value)) {
 								if(instance[key] instanceof Array || Array.isArray(instance[key])) {
