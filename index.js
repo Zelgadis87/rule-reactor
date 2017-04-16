@@ -222,8 +222,11 @@ var uuid = require("uuid");
 			if(!rule.reactor.domain[cons.name]) {
 				rule.reactor.domain[cons.name] = cons;
 			}
-			cons.instances = (cons.instances ? cons.instances : []);
-			cons.index = (cons.index ? cons.index : {});
+			//cons.instances = (cons.instances ? cons.instances : []);
+			//cons.index = (cons.index ? cons.index : {});
+			// below fixes issue #21, thanks @zelgadis87
+			if ( !cons.hasOwnProperty('instances') ) cons.instances = [];
+			if ( !cons.hasOwnProperty('index') ) cons.index = {};
 			cons.prototype.rules = (cons.prototype.rules ? cons.prototype.rules : {});
 			cons.prototype.rules[rule.name] = rule;
 			cons.prototype.activeKeys = (cons.prototype.activeKeys ? cons.prototype.activeKeys : {});
@@ -840,9 +843,12 @@ var uuid = require("uuid");
 				me.data.set(instance.__rrid__,instance);
 				me.dataModified = true;
 				instancestoprocess.push(instance);
-				instance.constructor.instances = (instance.constructor.instances ? instance.constructor.instances : []);
+				// fixes issue #21
+				if ( !instance.constructor.hasOwnProperty('instances') ) instance.constructor.instances = [];
+				if ( !instance.constructor.hasOwnProperty('index') ) instance.constructor.index = {};
+				///instance.constructor.instances = (instance.constructor.instances ? instance.constructor.instances : []);
 				instance.constructor.instances.push(instance);
-				instance.constructor.index = (instance.constructor.index ? instance.constructor.index : {});
+				//instance.constructor.index = (instance.constructor.index ? instance.constructor.index : {});
 				indexObject(instance.constructor.index,instance);
 				// patch any keys on instance or those identified as active while compiling
 				var keys = Object.keys(instance);
@@ -1014,7 +1020,10 @@ var uuid = require("uuid");
 		if(!test.cxproduct) {
 			var collections = [], args;
 			variables.forEach(function(variable) {
-				domain[variable].instances = (domain[variable].instances ? domain[variable].instances: []);
+				// fixes issue #21
+				if ( !domain[variable].hasOwnProperty('instances') ) domain[variable].instances = [];
+				if ( !domain[variable].hasOwnProperty('index') ) domain[variable].index = {};
+				//domain[variable].instances = (domain[variable].instances ? domain[variable].instances: []);
 				collections.push(domain[variable].instances);
 			});
 			test.cxproduct = new CXProduct(collections);
@@ -1060,7 +1069,10 @@ var uuid = require("uuid");
 		if(!test.cxproduct) {
 			var collections = [], args;
 			variables.forEach(function(variable) {
-				domain[variable].instances = (domain[variable].instances ? domain[variable].instances: []);
+				// fixes issue #21
+				if ( !domain[variable].hasOwnProperty('instances') ) domain[variable].instances = [];
+				if ( !domain[variable].hasOwnProperty('index') ) domain[variable].index = {};
+				//domain[variable].instances = (domain[variable].instances ? domain[variable].instances: []);
 				collections.push(domain[variable].instances);
 			});
 			test.cxproduct = new CXProduct(collections);

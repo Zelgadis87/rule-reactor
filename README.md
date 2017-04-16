@@ -293,8 +293,12 @@ For code quality assessment purposes, the cyclomatic complexity threshold is set
 
 There is a potential design flaw related to running multiple reactors. When objects are asserted to working memory their constructors are augmented with a member `instances`. The instances persist across reactor creations, i.e. the working memory of reactors is not isolated to a given reactor; hence, creating a new reactory may have rules that fire unexpectedly. It is arguable that the sharing of working memory may be useful in some situations, so the behavior has been left in place. A future release may support a config option when creating a reactors to tell it to used shared or private working memory.
 
+Super classes do not properly check instances of sub-classes. Hence, `forall` and `exists` can't be used to test instances of child classes and other rules will need to match against all child classes with the same conditions using an `||` opertator, e.g. use SubClassA.name==="joe" || SubClassB.name==="joe" rather than Super.name==="joe".
+
 
 # Updates (reverse chronological order)
+
+2017-04-16 v0.1.10 Fixed issue #21 and documented remaining known issue regarding superclasses in Notes section.
 
 2017-04-16 v0.1.9 Fixed issue #18 by providing ability to declare classes for use by a Rule Reactor instance.
 
