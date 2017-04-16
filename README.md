@@ -153,6 +153,7 @@ function forAll() { return reactor.forAll.apply(reactor,arguments); }
 Rules can check to see if a condition is true at least once across all possible combinations of a domain and fire just once rather than for each possible combination, e.g.
 
 ```
+reactor.declare("Person",Person); // this line required for Node.js
 reactor.createRule("homeless",0,{},
 	function() {
 		return reactor.exists({person: Person},function(person) { return person.home==null; });
@@ -163,6 +164,7 @@ reactor.createRule("homeless",0,{},
 ```
 Note that existential quantification required its own domain specification. Also note that the rule above is domainless.
 
+Additionally, due to some scoping issues with Node.js, the Person class must be declared to the rule reactor.
 
 We could also write a rule to ensure there are no homeless people:
 
@@ -170,6 +172,7 @@ We could also write a rule to ensure there are no homeless people:
 function not() { return reactor.not.apply(reactor,arguments); }
 function exists() { return reactor.exists.apply(reactor,arguments); }
 
+reactor.declare("Home",Home); // this line required for Node.js
 reactor.createRule("exists1",0,{person: Person},
 	function(person) {
 		return not(exists({home: Home},function(home) { return home.owner === person; }));
@@ -292,6 +295,8 @@ There is a potential design flaw related to running multiple reactors. When obje
 
 
 # Updates (reverse chronological order)
+
+2017-04-16 v0.1.9 Fixed issue #18 by providing ability to declare classes for use by a Rule Reactor instance.
 
 2017-02-20 v0.1.8 Minor code style change to enforce "strict" compliance.
 

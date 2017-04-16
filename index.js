@@ -13,6 +13,8 @@ var uuid = require("uuid");
 (function() {
 	"use strict";
 	
+	var domains = global;
+	
 	function intersector(objects) {
 		return function intersection() {
 			var min = Infinity, // length of shortest array argument
@@ -261,8 +263,9 @@ var uuid = require("uuid");
 		rule.conditions.forEach(function(condition) {
 			(condition+"").replace(/exists\(\s*(\s*{.*\s*})\s*,\s*(.*)\s*\)/g,
 				function(match,domainstr,conditionstr) {
-					var domain = new Function("return " + domainstr)(), variables = Object.keys(domain);
-					var quantification = {domain: domain, range: {}};
+					var domain = new Function("return " + domainstr)(),
+						variables = Object.keys(domain),
+						quantification = {domain: domain, range: {}};
 					rule.triggers.push(quantification);
 					variables.forEach(function(variable) {
 						var cons = domain[variable];
@@ -982,6 +985,11 @@ var uuid = require("uuid");
 			me.triggerlessRules[rule.name] = rule;
 		}
 		return rule;
+	}
+	RuleReactor.prototype.declare = function(domain,constructor) {
+		if(typeof(module)==="object") {
+			domains[domain] = constructor;
+		}
 	}
 	RuleReactor.forAll = function forAll(domain,test) {
 		if(typeof(domain)!=="object") {
