@@ -1,0 +1,22 @@
+<html>
+<body>
+
+<p>Open in debugger to see rule activity</p>
+<script src="../browser/rule-reactor.js"></script>
+<script id="example">
+function DomainObject() { }
+var reactor = new RuleReactor();
+reactor.tracelevel = 3;
+reactor.createRule( 'TEST_RULE', 0, { d: DomainObject}, function() {
+    console.log( 'Rule condition is validated' );
+    return true;
+}, function ( d ) {
+    reactor.retract( d )
+    console.log( 'Rule has been fired.' );
+} );
+reactor.assert( new DomainObject() );
+reactor.run( Infinity, true );
+</script>
+
+
+</body></html>

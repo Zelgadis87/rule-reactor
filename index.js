@@ -320,12 +320,12 @@ var uuid = require("uuid");
 										// cache what keys are associated with what variables
 										quantification.range[variable][key] = true;
 									}
-									// don't really do a replacereactornt!
+									// don't really do a replace!
 									return match;
 								}
 							);
 						});
-						// don't really do a replacereactornt!
+						// don't really do a replace!
 						return match;
 					}
 				);
@@ -333,7 +333,8 @@ var uuid = require("uuid");
 		rule.compiledConditions = [];
 		rule.conditions.forEach(function(condition,i) {
 			if((condition+"").indexOf("return")===-1) {
-				throw new TypeError("Condition function missing a return statereactornt in rule '" + rule.name + "' condition " + i);
+				//throw new TypeError("Condition function missing a return statement in rule '" + rule.name + "' condition " + i);
+				console.log("WARNING: Condition function missing a return statement in rule '" + rule.name + "' condition " + i);
 			}
 			var args = getFunctionArgs(condition);
 			condition.required = new Array(args.length);
@@ -620,21 +621,34 @@ var uuid = require("uuid");
 		if(me.reactor.tracelevel>2) {
 			Console.log("Reseting: ",me,instance);
 		}
-		me.activations.forEach(function(activations,activator) {
-			if(!instance || activator===instance) {
+		if(instance) {
+			var activations = me.activations.get(instance);
+			if(activations) {
 				activations.forEach(function(activation) {
 					var i = me.reactor.agenda.indexOf(activation);
 					if(i>=0) {
 						me.reactor.agenda.splice(i,1);
 					}
 				});
-				
+				me.activations.delete(instance);
 			}
-		});
+		} else {
+			me.activations.forEach(function(activations,activator) {
+				activations.forEach(function(activation) {
+					var i = me.reactor.agenda.indexOf(activation);
+					if(i>=0) {
+						me.reactor.agenda.splice(i,1);
+					}
+				});
+				me.activations.delete(activator);
+			});
+		}
+				
 	}
 	
 	Rule.prototype.unbind = function(instance) {
-		var me = this, variables = Object.keys(me.bindings);
+		var me = this, variables = Object.keys(me.bindings),
+			activations = me.activations.get(instance);
 		variables.map(function(variable) {
 			if(instance instanceof me.domain[variable]) {
 				var i = me.bindings[variable].indexOf(instance);
@@ -679,6 +693,33 @@ var uuid = require("uuid");
 			index[key][valuekey] = (index[key][valuekey] ? index[key][valuekey] : {});
 			index[key][valuekey][typekey] = (index[key][valuekey][typekey] ? index[key][valuekey][typekey] : {});
 			index[key][valuekey][typekey][instance.__rrid__] = instance;
+		});
+	}
+	function unIndexObject(index,instance) { // support for fixing issue #23
+		var keys, primitive = false;
+		if(!instance.__rrid__) return;
+		if(instance instanceof Number || instance instanceof String || instance instanceof Boolean) {
+			keys = ["value"];
+			primitive = true;
+		} else {
+			keys = Object.keys(instance);
+		}	
+		keys.forEach(function(key) {
+			if(!index[key]) return;
+			var value = (primitive ? instance.valueOf() : instance[key]), type = typeof(value), valuekey, typekey;
+			if(type==="object" && value) {
+				if(!value.__rrid__) return;
+				valuekey = value.constructor.name + "@" + value.__rrid__;
+			} else {
+				valuekey = value;
+			}
+			if(value===null || typeof(value)==="undefined") {
+				typekey = "undefined";
+			} else {
+				typekey = type;
+			}
+			if(!index[key][valuekey] || !index[key][valuekey][typekey]) return;
+			delete index[key][valuekey][typekey][instance.__rrid__];
 		});
 	}
 	function updateIndex(index,instance,key,oldValue) {
@@ -1109,6 +1150,8 @@ var uuid = require("uuid");
 				}
 				// retract from data
 				me.data.delete(instance.__rrid__);
+				instance.constructor.instances.splice(instance.constructor.instances.indexOf(instance),1); // fix for issue #23
+				unIndexObject(instance.constructor.index,instance); // fix for issue #23
 				me.dataModified = true;
 				// restore instance properties
 				Object.keys(instance).forEach(function(key) {

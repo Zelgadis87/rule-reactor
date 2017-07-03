@@ -11,7 +11,7 @@ A light weight, fast, expressive forward chaining business rule engine leveragin
 
 All rule conditions and actions are expressed as regular JavaScript functions so a JavaScript debugger can be fully utilized for debugging RuleReactor applications.
 
-At 45K (21K minified) vs 577K (227K minified) for Nools, a comparable speed for many applications, plus a low memory impact pattern and join processor, rule-reactor is perfect for memory constrained apps like those on mobile devices.
+At 50K (24K minified) vs 577K (227K minified) for Nools, a comparable speed for many applications, plus a low memory impact pattern and join processor, rule-reactor is perfect for memory constrained apps like those on mobile devices.
 
 Some people interested in rules base programming may also be interested in ReasonDB, which provides rule-like capability itegrated with database streaming analytics capability and SQL like JOQULAR syntax:
 
@@ -297,6 +297,8 @@ Super classes do not properly check instances of sub-classes. Hence, `forall` an
 
 
 # Updates (reverse chronological order)
+
+2017-07-03 v0.1.11 Fixed issues #23 & #19. Arrow functions now supported. Memory leak eliminated.
 
 2017-04-16 v0.1.10 Fixed issue #21 and documented remaining known issue regarding superclasses in Notes section.
 
