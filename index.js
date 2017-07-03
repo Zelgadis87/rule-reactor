@@ -17,28 +17,28 @@ var uuid = require("uuid");
 	
 	function intersector(objects) {
 		return function intersection() {
-			var min = Infinity, // length of shortest array argument
+			let min = Infinity, // length of shortest array argument
 				shrtst = 0, // index of shortest array argument
 				set = (objects ? new Set() : {}),
 				rslt = [], // result
 				mxj = arguments.length-1;
-			for(var j=0;j<=mxj;j++) { // find index of shortest array argument
-				var l = arguments[j].length;
+			for(let j=0;j<=mxj;j++) { // find index of shortest array argument
+				let l = arguments[j].length;
 				if(l<min) {
 					shrtst = j;
 					min = l;
 				}
 			}
-			var shrt = arguments[shrtst],
+			let shrt = arguments[shrtst],
 				mxi = shrt.length;
-			for(var i=0;i<mxi;i++) { // initialize set of possible values from shortest array
+			for(let i=0;i<mxi;i++) { // initialize set of possible values from shortest array
 				if(objects) { set.add(shrt[i]); } else { set[shrt[i]]=1; }
 			}
-			for(var j=0;j<=mxj;j++) { // loop through all array arguments
-				var	array = arguments[j],
+			for(let j=0;j<=mxj;j++) { // loop through all array arguments
+				let	array = arguments[j],
 					mxk = array.length;
-				for(var k=0;k<mxk;k++) { // loop through all values
-					var item = array[k];
+				for(let k=0;k<mxk;k++) { // loop through all values
+					let item = array[k];
 					if((objects && set.has(item)) || set[item]) { // if value is possible
 						if(j===mxj) { // and all arrays have it (or we would not be at this point)
 							rslt.push(item); // add to results
@@ -647,8 +647,7 @@ var uuid = require("uuid");
 	}
 	
 	Rule.prototype.unbind = function(instance) {
-		var me = this, variables = Object.keys(me.bindings),
-			activations = me.activations.get(instance);
+		var me = this, variables = Object.keys(me.bindings);
 		variables.map(function(variable) {
 			if(instance instanceof me.domain[variable]) {
 				var i = me.bindings[variable].indexOf(instance);
@@ -697,7 +696,7 @@ var uuid = require("uuid");
 	}
 	function unIndexObject(index,instance) { // support for fixing issue #23
 		var keys, primitive = false;
-		if(!instance.__rrid__) return;
+		if(!instance.__rrid__) { return; }
 		if(instance instanceof Number || instance instanceof String || instance instanceof Boolean) {
 			keys = ["value"];
 			primitive = true;
@@ -705,10 +704,10 @@ var uuid = require("uuid");
 			keys = Object.keys(instance);
 		}	
 		keys.forEach(function(key) {
-			if(!index[key]) return;
+			if(!index[key]) { return; }
 			var value = (primitive ? instance.valueOf() : instance[key]), type = typeof(value), valuekey, typekey;
 			if(type==="object" && value) {
-				if(!value.__rrid__) return;
+				if(!value.__rrid__) { return; }
 				valuekey = value.constructor.name + "@" + value.__rrid__;
 			} else {
 				valuekey = value;
@@ -718,7 +717,7 @@ var uuid = require("uuid");
 			} else {
 				typekey = type;
 			}
-			if(!index[key][valuekey] || !index[key][valuekey][typekey]) return;
+			if(!index[key][valuekey] || !index[key][valuekey][typekey]) { return; }
 			delete index[key][valuekey][typekey][instance.__rrid__];
 		});
 	}
@@ -779,8 +778,7 @@ var uuid = require("uuid");
 				if(parentkeys.indexOf(key)>=0 && parentkeys.indexOf(key)===parentinstances.indexOf(value)) {
 					return true;
 				}
-				var valuekeys = Object.keys(index[key]);
-				return valuekeys.some(function(valuekey) {
+				return Object.keys(index[key]).some(function(valuekey) {
 					var parts = valuekey.split("@");
 					if(parts.length!==2) {
 						return false;
@@ -825,8 +823,7 @@ var uuid = require("uuid");
 				if(parentkeys.indexOf(key)>=0 && parentkeys.indexOf(key)===parentinstances.indexOf(value)) {
 					return true;
 				}
-				var valuekeys = Object.keys(index[key]);
-				return valuekeys.some(function(valuekey) {
+				return Object.keys(index[key]).some(function(valuekey) {
 					var parts = valuekey.split("@");
 					if(parts.length!==2) {
 						return false;

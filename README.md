@@ -298,6 +298,8 @@ Super classes do not properly check instances of sub-classes. Hence, `forall` an
 
 # Updates (reverse chronological order)
 
+2017-07-03 v0.1.12 Minor stylistic code changes for maintainability.
+
 2017-07-03 v0.1.11 Fixed issues #23 & #19. Arrow functions now supported. Memory leak eliminated.
 
 2017-04-16 v0.1.10 Fixed issue #21 and documented remaining known issue regarding superclasses in Notes section.
