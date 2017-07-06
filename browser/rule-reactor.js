@@ -1172,9 +1172,11 @@ var uuid = require("uuid");
 					}
 				});
 				// unbind from all associated rules
-				Object.keys(instance.rules).forEach(function(rulename) {
-					instance.rules[rulename].unbind(instance);
-				});
+				if (instance.rules) {
+					Object.keys(instance.rules).forEach(function(rulename) {
+						instance.rules[rulename].unbind(instance);
+					});
+				}
 
 			}
 		});
