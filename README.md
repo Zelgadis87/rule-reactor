@@ -91,7 +91,7 @@ As a result of the above rules, instances of Patient will automatically have the
 * After the domain comes a condition or array of conditions. These are functions that return true or false. They
 should not produce any side effects because they will be called a lot and strange things might happen as a result. Note, it is generally better to use == rather than === in rules because this allows objects to resolve using their valueOf() function. 
 * Finally, an action is specified. This can be a function that executes any normal JavaScript code. If an assignment of an object to a property on an object that already exists in the RuleReactor memory is made, the object will be automatically inserted. 
-* You can also create objects and insert them, using `reactor.insert(object)`. Or, you can create objects that do not end-up in RuleReactor memory, by just creating them and not inserting them or assigning them to anything.
+* You can also create objects and insert them, using `reactor.assert(object)`. Or, you can create objects that do not end-up in RuleReactor memory, by just creating them and not inserting them or assigning them to anything.
 
 After the rules have been defined, an initial set of facts against which the rules will execute is normally created.
 
@@ -100,7 +100,7 @@ var p = new Patient();
 p.fever = "high";
 p.spots = true;
 p.innoculated = false;
-reactor.insert(p);
+reactor.assert(p);
 ```
 
 All that is left to do is run the RuleReactor.
