@@ -298,6 +298,8 @@ Super classes do not properly check instances of sub-classes. Hence, `forall` an
 
 # Updates (reverse chronological order)
 
+2017-07-28 v0.1.14 Fixed issue #27. Typos in README.md. Thanks @fnk.
+
 2017-07-06 v0.1.13 Fixed issue #25. Thanks @davidmeeker.
 
 2017-07-03 v0.1.12 Minor stylistic code changes for maintainability.
