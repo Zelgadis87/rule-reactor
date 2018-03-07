@@ -1,4 +1,5 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function (global){
 /* MIT License
 
 rule-reactor: A light weight, fast, expressive forward chaining business rule engine leveraging JavaScript internals and Functions as objects rather than Rete.
@@ -14,30 +15,32 @@ var uuid = require("uuid");
 (function() {
 	"use strict";
 	
+	var domains = global;
+	
 	function intersector(objects) {
 		return function intersection() {
-			var min = Infinity, // length of shortest array argument
+			let min = Infinity, // length of shortest array argument
 				shrtst = 0, // index of shortest array argument
 				set = (objects ? new Set() : {}),
 				rslt = [], // result
 				mxj = arguments.length-1;
-			for(var j=0;j<=mxj;j++) { // find index of shortest array argument
-				var l = arguments[j].length;
+			for(let j=0;j<=mxj;j++) { // find index of shortest array argument
+				let l = arguments[j].length;
 				if(l<min) {
 					shrtst = j;
 					min = l;
 				}
 			}
-			var shrt = arguments[shrtst],
+			let shrt = arguments[shrtst],
 				mxi = shrt.length;
-			for(var i=0;i<mxi;i++) { // initialize set of possible values from shortest array
+			for(let i=0;i<mxi;i++) { // initialize set of possible values from shortest array
 				if(objects) { set.add(shrt[i]); } else { set[shrt[i]]=1; }
 			}
-			for(var j=0;j<=mxj;j++) { // loop through all array arguments
-				var	array = arguments[j],
+			for(let j=0;j<=mxj;j++) { // loop through all array arguments
+				let	array = arguments[j],
 					mxk = array.length;
-				for(var k=0;k<mxk;k++) { // loop through all values
-					var item = array[k];
+				for(let k=0;k<mxk;k++) { // loop through all values
+					let item = array[k];
 					if((objects && set.has(item)) || set[item]) { // if value is possible
 						if(j===mxj) { // and all arrays have it (or we would not be at this point)
 							rslt.push(item); // add to results
@@ -221,8 +224,11 @@ var uuid = require("uuid");
 			if(!rule.reactor.domain[cons.name]) {
 				rule.reactor.domain[cons.name] = cons;
 			}
-			cons.instances = (cons.instances ? cons.instances : []);
-			cons.index = (cons.index ? cons.index : {});
+			//cons.instances = (cons.instances ? cons.instances : []);
+			//cons.index = (cons.index ? cons.index : {});
+			// below fixes issue #21, thanks @zelgadis87
+			if ( !cons.hasOwnProperty('instances') ) cons.instances = [];
+			if ( !cons.hasOwnProperty('index') ) cons.index = {};
 			cons.prototype.rules = (cons.prototype.rules ? cons.prototype.rules : {});
 			cons.prototype.rules[rule.name] = rule;
 			cons.prototype.activeKeys = (cons.prototype.activeKeys ? cons.prototype.activeKeys : {});
@@ -262,8 +268,9 @@ var uuid = require("uuid");
 		rule.conditions.forEach(function(condition) {
 			(condition+"").replace(/exists\(\s*(\s*{.*\s*})\s*,\s*(.*)\s*\)/g,
 				function(match,domainstr,conditionstr) {
-					var domain = new Function("return " + domainstr)(), variables = Object.keys(domain);
-					var quantification = {domain: domain, range: {}};
+					var domain = new Function("return " + domainstr)(),
+						variables = Object.keys(domain),
+						quantification = {domain: domain, range: {}};
 					rule.triggers.push(quantification);
 					variables.forEach(function(variable) {
 						var cons = domain[variable];
@@ -315,12 +322,12 @@ var uuid = require("uuid");
 										// cache what keys are associated with what variables
 										quantification.range[variable][key] = true;
 									}
-									// don't really do a replacereactornt!
+									// don't really do a replace!
 									return match;
 								}
 							);
 						});
-						// don't really do a replacereactornt!
+						// don't really do a replace!
 						return match;
 					}
 				);
@@ -328,7 +335,8 @@ var uuid = require("uuid");
 		rule.compiledConditions = [];
 		rule.conditions.forEach(function(condition,i) {
 			if((condition+"").indexOf("return")===-1) {
-				throw new TypeError("Condition function missing a return statereactornt in rule '" + rule.name + "' condition " + i);
+				//throw new TypeError("Condition function missing a return statement in rule '" + rule.name + "' condition " + i);
+				console.log("WARNING: Condition function missing a return statement in rule '" + rule.name + "' condition " + i);
 			}
 			var args = getFunctionArgs(condition);
 			condition.required = new Array(args.length);
@@ -615,17 +623,29 @@ var uuid = require("uuid");
 		if(me.reactor.tracelevel>2) {
 			Console.log("Reseting: ",me,instance);
 		}
-		me.activations.forEach(function(activations,activator) {
-			if(!instance || activator===instance) {
+		if(instance) {
+			var activations = me.activations.get(instance);
+			if(activations) {
 				activations.forEach(function(activation) {
 					var i = me.reactor.agenda.indexOf(activation);
 					if(i>=0) {
 						me.reactor.agenda.splice(i,1);
 					}
 				});
-				
+				me.activations.delete(instance);
 			}
-		});
+		} else {
+			me.activations.forEach(function(activations,activator) {
+				activations.forEach(function(activation) {
+					var i = me.reactor.agenda.indexOf(activation);
+					if(i>=0) {
+						me.reactor.agenda.splice(i,1);
+					}
+				});
+				me.activations.delete(activator);
+			});
+		}
+				
 	}
 	
 	Rule.prototype.unbind = function(instance) {
@@ -674,6 +694,33 @@ var uuid = require("uuid");
 			index[key][valuekey] = (index[key][valuekey] ? index[key][valuekey] : {});
 			index[key][valuekey][typekey] = (index[key][valuekey][typekey] ? index[key][valuekey][typekey] : {});
 			index[key][valuekey][typekey][instance.__rrid__] = instance;
+		});
+	}
+	function unIndexObject(index,instance) { // support for fixing issue #23
+		var keys, primitive = false;
+		if(!instance.__rrid__) { return; }
+		if(instance instanceof Number || instance instanceof String || instance instanceof Boolean) {
+			keys = ["value"];
+			primitive = true;
+		} else {
+			keys = Object.keys(instance);
+		}	
+		keys.forEach(function(key) {
+			if(!index[key]) { return; }
+			var value = (primitive ? instance.valueOf() : instance[key]), type = typeof(value), valuekey, typekey;
+			if(type==="object" && value) {
+				if(!value.__rrid__) { return; }
+				valuekey = value.constructor.name + "@" + value.__rrid__;
+			} else {
+				valuekey = value;
+			}
+			if(value===null || typeof(value)==="undefined") {
+				typekey = "undefined";
+			} else {
+				typekey = type;
+			}
+			if(!index[key][valuekey] || !index[key][valuekey][typekey]) { return; }
+			delete index[key][valuekey][typekey][instance.__rrid__];
 		});
 	}
 	function updateIndex(index,instance,key,oldValue) {
@@ -733,8 +780,7 @@ var uuid = require("uuid");
 				if(parentkeys.indexOf(key)>=0 && parentkeys.indexOf(key)===parentinstances.indexOf(value)) {
 					return true;
 				}
-				var valuekeys = Object.keys(index[key]);
-				return valuekeys.some(function(valuekey) {
+				return Object.keys(index[key]).some(function(valuekey) {
 					var parts = valuekey.split("@");
 					if(parts.length!==2) {
 						return false;
@@ -779,8 +825,7 @@ var uuid = require("uuid");
 				if(parentkeys.indexOf(key)>=0 && parentkeys.indexOf(key)===parentinstances.indexOf(value)) {
 					return true;
 				}
-				var valuekeys = Object.keys(index[key]);
-				return valuekeys.some(function(valuekey) {
+				return Object.keys(index[key]).some(function(valuekey) {
 					var parts = valuekey.split("@");
 					if(parts.length!==2) {
 						return false;
@@ -838,9 +883,12 @@ var uuid = require("uuid");
 				me.data.set(instance.__rrid__,instance);
 				me.dataModified = true;
 				instancestoprocess.push(instance);
-				instance.constructor.instances = (instance.constructor.instances ? instance.constructor.instances : []);
+				// fixes issue #21
+				if ( !instance.constructor.hasOwnProperty('instances') ) instance.constructor.instances = [];
+				if ( !instance.constructor.hasOwnProperty('index') ) instance.constructor.index = {};
+				///instance.constructor.instances = (instance.constructor.instances ? instance.constructor.instances : []);
 				instance.constructor.instances.push(instance);
-				instance.constructor.index = (instance.constructor.index ? instance.constructor.index : {});
+				//instance.constructor.index = (instance.constructor.index ? instance.constructor.index : {});
 				indexObject(instance.constructor.index,instance);
 				// patch any keys on instance or those identified as active while compiling
 				var keys = Object.keys(instance);
@@ -984,6 +1032,11 @@ var uuid = require("uuid");
 		}
 		return rule;
 	}
+	RuleReactor.prototype.declare = function(domain,constructor) {
+		if(typeof(module)==="object") {
+			domains[domain] = constructor;
+		}
+	}
 	RuleReactor.forAll = function forAll(domain,test) {
 		if(typeof(domain)!=="object") {
 			throw new TypeError("Domain " + domain + " is not an object in universal quantification");
@@ -1007,7 +1060,10 @@ var uuid = require("uuid");
 		if(!test.cxproduct) {
 			var collections = [], args;
 			variables.forEach(function(variable) {
-				domain[variable].instances = (domain[variable].instances ? domain[variable].instances: []);
+				// fixes issue #21
+				if ( !domain[variable].hasOwnProperty('instances') ) domain[variable].instances = [];
+				if ( !domain[variable].hasOwnProperty('index') ) domain[variable].index = {};
+				//domain[variable].instances = (domain[variable].instances ? domain[variable].instances: []);
 				collections.push(domain[variable].instances);
 			});
 			test.cxproduct = new CXProduct(collections);
@@ -1053,7 +1109,10 @@ var uuid = require("uuid");
 		if(!test.cxproduct) {
 			var collections = [], args;
 			variables.forEach(function(variable) {
-				domain[variable].instances = (domain[variable].instances ? domain[variable].instances: []);
+				// fixes issue #21
+				if ( !domain[variable].hasOwnProperty('instances') ) domain[variable].instances = [];
+				if ( !domain[variable].hasOwnProperty('index') ) domain[variable].index = {};
+				//domain[variable].instances = (domain[variable].instances ? domain[variable].instances: []);
 				collections.push(domain[variable].instances);
 			});
 			test.cxproduct = new CXProduct(collections);
@@ -1090,6 +1149,8 @@ var uuid = require("uuid");
 				}
 				// retract from data
 				me.data.delete(instance.__rrid__);
+				instance.constructor.instances.splice(instance.constructor.instances.indexOf(instance),1); // fix for issue #23
+				unIndexObject(instance.constructor.index,instance); // fix for issue #23
 				me.dataModified = true;
 				// restore instance properties
 				Object.keys(instance).forEach(function(key) {
@@ -1111,9 +1172,11 @@ var uuid = require("uuid");
 					}
 				});
 				// unbind from all associated rules
-				Object.keys(instance.rules).forEach(function(rulename) {
-					instance.rules[rulename].unbind(instance);
-				});
+				if (instance.rules) {
+					Object.keys(instance.rules).forEach(function(rulename) {
+						instance.rules[rulename].unbind(instance);
+					});
+				}
 
 			}
 		});
@@ -1212,6 +1275,7 @@ var uuid = require("uuid");
 }).call((typeof(window)!=="undefined" ? window : (typeof(module)!=="undefined" ? module : null)));
 
 
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{"uuid":3}],2:[function(require,module,exports){
 (function (global){
 

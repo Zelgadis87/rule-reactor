@@ -199,6 +199,30 @@ describe("rule-reactor ", function() {
 		activations[0].delete();
 		rule.delete();
 	});
+	it("should support retract",function() {
+		function  TestObject(value) {
+			this.value = value;
+		}
+		var reactor = new RuleReactor();
+		reactor.trace(3);
+		var to = new TestObject("test");
+		var rule = reactor.createRule("test",0,{t: TestObject},
+				function(t) {
+					return t.value == "test";
+				},
+				function() {
+					
+				}
+		);
+		reactor.assert(to);
+		var activations = rule.activations.get(to);
+		expect(activations).to.be.instanceof(Array);
+		expect(activations[0]).to.be.instanceof(Object);
+		reactor.retract(to);
+		var activations = rule.activations.get(to);
+		expect(activations).to.equal(undefined);
+		rule.delete();
+	});
 	it("should support primtive object matching",function() {
 		var reactor = new RuleReactor();
 		var to = new Number(1);
@@ -414,7 +438,8 @@ describe("rule-reactor ", function() {
 			rule.delete();
 		}
 	});
-	it("should throw TypeError when condition does not contain return",function() {
+	/* Removed with fix for #19 */
+	/*it("should throw TypeError when condition does not contain return",function() {
 		var reactor = new RuleReactor();
 		var result, rule;
 		try {
@@ -433,8 +458,9 @@ describe("rule-reactor ", function() {
 		if(rule) {
 			rule.delete();
 		}
-	});
-	it("should throw TypeError when forAll does not contain return",function() {
+	});*/
+	/* Removed with fix for #19 */
+	/*it("should throw TypeError when forAll does not contain return",function() {
 		var reactor = new RuleReactor();
 		var result, rule;
 		try {
@@ -453,8 +479,9 @@ describe("rule-reactor ", function() {
 		if(rule) {
 			rule.delete();
 		}
-	});
-	it("should throw TypeError when forAll domain is not an object",function() {
+	});*/
+	/* Removed with fix for #19 */
+	/*it("should throw TypeError when forAll domain is not an object",function() {
 		var reactor = new RuleReactor();
 		var result, rule;
 		try {
@@ -473,8 +500,9 @@ describe("rule-reactor ", function() {
 		if(rule) {
 			rule.delete();
 		}
-	});
-	it("should throw TypeError when exists does not contain return",function() {
+	});*/
+	/* Removed with fix for #19 */
+	/*it("should throw TypeError when exists does not contain return",function() {
 		var reactor = new RuleReactor();
 		var to = new Number(1);
 		var result, rule;
@@ -494,7 +522,7 @@ describe("rule-reactor ", function() {
 		if(rule) {
 			rule.delete();
 		}
-	});
+	});*/
 	it("should throw ReferenceError when undeclared variable encountered in condition",function() {
 		var reactor = new RuleReactor();
 		var to = new Number(1);

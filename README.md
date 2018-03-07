@@ -11,7 +11,7 @@ A light weight, fast, expressive forward chaining business rule engine leveragin
 
 All rule conditions and actions are expressed as regular JavaScript functions so a JavaScript debugger can be fully utilized for debugging RuleReactor applications.
 
-At 45K (21K minified) vs 577K (227K minified) for Nools, a comparable speed for many applications, plus a low memory impact pattern and join processor, rule-reactor is perfect for memory constrained apps like those on mobile devices.
+At 50K (24K minified) vs 577K (227K minified) for Nools, a comparable speed for many applications, plus a low memory impact pattern and join processor, rule-reactor is perfect for memory constrained apps like those on mobile devices.
 
 Some people interested in rules base programming may also be interested in ReasonDB, which provides rule-like capability itegrated with database streaming analytics capability and SQL like JOQULAR syntax:
 
@@ -91,7 +91,7 @@ As a result of the above rules, instances of Patient will automatically have the
 * After the domain comes a condition or array of conditions. These are functions that return true or false. They
 should not produce any side effects because they will be called a lot and strange things might happen as a result. Note, it is generally better to use == rather than === in rules because this allows objects to resolve using their valueOf() function. 
 * Finally, an action is specified. This can be a function that executes any normal JavaScript code. If an assignment of an object to a property on an object that already exists in the RuleReactor memory is made, the object will be automatically inserted. 
-* You can also create objects and insert them, using `reactor.insert(object)`. Or, you can create objects that do not end-up in RuleReactor memory, by just creating them and not inserting them or assigning them to anything.
+* You can also create objects and insert them, using `reactor.assert(object)`. Or, you can create objects that do not end-up in RuleReactor memory, by just creating them and not inserting them or assigning them to anything.
 
 After the rules have been defined, an initial set of facts against which the rules will execute is normally created.
 
@@ -100,7 +100,7 @@ var p = new Patient();
 p.fever = "high";
 p.spots = true;
 p.innoculated = false;
-reactor.insert(p);
+reactor.assert(p);
 ```
 
 All that is left to do is run the RuleReactor.
@@ -153,6 +153,7 @@ function forAll() { return reactor.forAll.apply(reactor,arguments); }
 Rules can check to see if a condition is true at least once across all possible combinations of a domain and fire just once rather than for each possible combination, e.g.
 
 ```
+reactor.declare("Person",Person); // this line required for Node.js
 reactor.createRule("homeless",0,{},
 	function() {
 		return reactor.exists({person: Person},function(person) { return person.home==null; });
@@ -163,6 +164,7 @@ reactor.createRule("homeless",0,{},
 ```
 Note that existential quantification required its own domain specification. Also note that the rule above is domainless.
 
+Additionally, due to some scoping issues with Node.js, the Person class must be declared to the rule reactor.
 
 We could also write a rule to ensure there are no homeless people:
 
@@ -170,6 +172,7 @@ We could also write a rule to ensure there are no homeless people:
 function not() { return reactor.not.apply(reactor,arguments); }
 function exists() { return reactor.exists.apply(reactor,arguments); }
 
+reactor.declare("Home",Home); // this line required for Node.js
 reactor.createRule("exists1",0,{person: Person},
 	function(person) {
 		return not(exists({home: Home},function(home) { return home.owner === person; }));
@@ -290,8 +293,22 @@ For code quality assessment purposes, the cyclomatic complexity threshold is set
 
 There is a potential design flaw related to running multiple reactors. When objects are asserted to working memory their constructors are augmented with a member `instances`. The instances persist across reactor creations, i.e. the working memory of reactors is not isolated to a given reactor; hence, creating a new reactory may have rules that fire unexpectedly. It is arguable that the sharing of working memory may be useful in some situations, so the behavior has been left in place. A future release may support a config option when creating a reactors to tell it to used shared or private working memory.
 
+Super classes do not properly check instances of sub-classes. Hence, `forall` and `exists` can't be used to test instances of child classes and other rules will need to match against all child classes with the same conditions using an `||` opertator, e.g. use SubClassA.name==="joe" || SubClassB.name==="joe" rather than Super.name==="joe".
+
 
 # Updates (reverse chronological order)
+
+2017-07-28 v0.1.14 Fixed issue #27. Typos in README.md. Thanks @fnk.
+
+2017-07-06 v0.1.13 Fixed issue #25. Thanks @davidmeeker.
+
+2017-07-03 v0.1.12 Minor stylistic code changes for maintainability.
+
+2017-07-03 v0.1.11 Fixed issues #23 & #19. Arrow functions now supported. Memory leak eliminated.
+
+2017-04-16 v0.1.10 Fixed issue #21 and documented remaining known issue regarding superclasses in Notes section.
+
+2017-04-16 v0.1.9 Fixed issue #18 by providing ability to declare classes for use by a Rule Reactor instance.
 
 2017-02-20 v0.1.8 Minor code style change to enforce "strict" compliance.
 
