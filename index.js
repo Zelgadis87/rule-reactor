@@ -552,7 +552,7 @@ var uuid = require("uuid");
 	Rule.prototype.fire = function(match) {
 		var me = this;
 		if(me.reactor.tracelevel>0) {
-			Console.log("Firing: ",this.name);
+			Console.log( "Firing: ", this.name, match.map( x => x.constructor.name ) );
 		}
 		this.fired++;
 		this.reactor.run.executions++;
