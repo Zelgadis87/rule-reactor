@@ -1,4 +1,4 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function(){function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s}return e})()({1:[function(require,module,exports){
 (function (global){
 /* MIT License
 
@@ -52,7 +52,7 @@ var uuid = require("uuid");
 		};
 	}
 	var intersection = intersector(false);
-	
+
 //		portions from http://phrogz.net/lazy-cartesian-product
 	function CXProduct(collections){
 		var me = this;
@@ -71,15 +71,15 @@ var uuid = require("uuid");
 			}
 			return size - me.start;
 		}
-		return size; 
+		return size;
 	};
 	CXProduct.prototype.length.size = CXProduct.prototype.length;
 	CXProduct.prototype.every = function(callback,pattern) {
 		function dive(cxproduct,d,counter,collections,lens,p,callback,pattern){
 			var a=collections[d], max=collections.length-1,len=lens[d];
 			if (d===max) {
-				for (var i=0;i<len;++i) { 
-					p[d]=a[i]; 
+				for (var i=0;i<len;++i) {
+					p[d]=a[i];
 					if(!callback(p.slice(0),counter.count)) {
 						return false;
 					}
@@ -122,8 +122,8 @@ var uuid = require("uuid");
 		function dive(cxproduct,d,counter,collections,lens,p,callback,pattern){
 			var a=collections[d], max=collections.length-1,len=lens[d];
 			if (d===max) {
-				for (var i=0;i<len;++i) { 
-					p[d]=a[i]; 
+				for (var i=0;i<len;++i) {
+					p[d]=a[i];
 					if(callback(p.slice(0),counter.count)) {
 						return true;
 					}
@@ -152,7 +152,7 @@ var uuid = require("uuid");
 				return true;
 			}
 			i++;
-		} while(i<max); 
+		} while(i<max);
 		return false;
 	}
 	CXProduct.prototype.verify = function(i,row) {
@@ -164,9 +164,9 @@ var uuid = require("uuid");
 		function dive(cxproduct,d,counter,collections,lens,p,callback){
 			var a=collections[d], max=collections.length-1,len=lens[d];
 			if (d===max) {
-				for (var i=0;i<len;++i) { 
-					p[d]=a[i]; 
-					callback(p.slice(0),counter.count); 
+				for (var i=0;i<len;++i) {
+					p[d]=a[i];
+					callback(p.slice(0),counter.count);
 					counter.count++;
 				}
 			} else {
@@ -196,8 +196,8 @@ var uuid = require("uuid");
 		}
 	}
 	CXProduct.prototype.forEach = CXProduct.prototype.forEach1;//	portions from http://phrogz.net/lazy-cartesian-product
-	
-	
+
+
 	function getFunctionArgs(f) {
 		var str = f+"";
 		var start = str.indexOf("(")+1;
@@ -248,7 +248,7 @@ var uuid = require("uuid");
 			// extract instance keys from condition using a side-effect of replace
 			rule.conditions.forEach(function(condition) {
 				(condition+"").replace(new RegExp("(\\b"+variable+"\\.\\w+\\b)","g"),
-					function(match) { 
+					function(match) {
 						var parts = match.split("."),key = parts[1];
 						// cache reactive non-function keys on class prototype
 						if(key.indexOf("(")===-1) {
@@ -282,7 +282,7 @@ var uuid = require("uuid");
 						cons.prototype.rules[rule.name] = rule;
 						cons.prototype.activeKeys = (cons.prototype.activeKeys ? cons.prototype.activeKeys : {});
 						conditionstr.replace(new RegExp("(\\b"+variable+"\\.\\w+\\b)","g"),
-							function(match) { 
+							function(match) {
 								var parts = match.split("."),key = parts[1];
 								// cache reactive non-function keys on class prototype
 								if(key.indexOf("(")===-1) {
@@ -314,7 +314,7 @@ var uuid = require("uuid");
 							cons.prototype.rules[rule.name] = rule;
 							cons.prototype.activeKeys = (cons.prototype.activeKeys ? cons.prototype.activeKeys : {});
 							conditionstr.replace(new RegExp("(\\b"+variable+"\\.\\w+\\b)","g"),
-								function(match) { 
+								function(match) {
 									var parts = match.split("."),key = parts[1];
 									// cache reactive non-function keys on class prototype
 									if(key.indexOf("(")===-1) {
@@ -374,7 +374,7 @@ var uuid = require("uuid");
 				throw new ReferenceError("Referenced domain variable '" + arg + "' undefined in rule '" + rule.name + "' action");
 			}
 			rule.action.required[i] = required;
-			
+
 		});
 		// do not add full compilation since actions are allowed to use closure scope and it will break that
 		rule.compiledAction = function(match) {
@@ -392,13 +392,13 @@ var uuid = require("uuid");
 
 	// dummy console so logging can easily be retractd
 	var Console = {};
-	Console.log = function() { 
+	Console.log = function() {
 		var c = console;
-		c.log.apply(console,arguments); 
+		c.log.apply(console,arguments);
 	};
 	// uncomment line below to stop logging
 	//Console.log = function() {};
-	
+
 	// http://stackoverflow.com/questions/1344500/efficient-way-to-insert-a-number-into-a-sorted-array-of-numbers
 	function insertSorted(arr, item, comparator) {
 		if (comparator == null) {
@@ -521,7 +521,7 @@ var uuid = require("uuid");
 			Console.log("New Rule: ",me);
 		}
 		me.bindInstances(true);
-	} 
+	}
 	Rule.prototype.bind = function(instance,test) {
 		var me = this, variables = Object.keys(me.bindings);
 		variables.map(function(variable) {
@@ -554,7 +554,7 @@ var uuid = require("uuid");
 	Rule.prototype.fire = function(match) {
 		var me = this;
 		if(me.reactor.tracelevel>0) {
-			Console.log("Firing: ",this,match);
+			Console.log( "Firing: ", this.name, match.map( x => x.constructor.name ) );
 		}
 		this.fired++;
 		this.reactor.run.executions++;
@@ -569,7 +569,7 @@ var uuid = require("uuid");
 			me.cxproduct = null;
 			return false;
 		}
-		
+
 		if(!me.cxproduct) {
 			me.cxproduct = new CXProduct(values);
 		}
@@ -647,7 +647,7 @@ var uuid = require("uuid");
 		}
 				
 	}
-	
+
 	Rule.prototype.unbind = function(instance) {
 		var me = this, variables = Object.keys(me.bindings);
 		variables.map(function(variable) {
@@ -674,7 +674,7 @@ var uuid = require("uuid");
 			primitive = true;
 		} else {
 			keys = Object.keys(instance);
-		}	
+		}
 		keys.forEach(function(key) {
 			index[key] = (index[key] ? index[key] : {});
 			var value = (primitive ? instance.valueOf() : instance[key]), type = typeof(value), valuekey, typekey;
@@ -770,7 +770,7 @@ var uuid = require("uuid");
 			primitive = true;
 		} else {
 			keys = Object.keys(instance);
-		}	
+		}
 		parentkeys = (parentkeys ? parentkeys : []);
 		parentinstances = (parentinstances ? parentinstances : []);
 		return keys.every(function(key) {
@@ -813,7 +813,7 @@ var uuid = require("uuid");
 		var	primitive = false;
 		if(instance instanceof Number || instance instanceof String || instance instanceof Boolean || ["number","string","boolean"].indexOf(typeof(instance))>=0) {
 			primitive = true;
-		}	
+		}
 		parentkeys = (parentkeys ? parentkeys : []);
 		parentinstances = (parentinstances ? parentinstances : []);
 		return Object.keys(index).some(function(key) {
@@ -851,6 +851,14 @@ var uuid = require("uuid");
 			});
 		});
 	}
+	function Deferred() {
+		this.resolve = null;
+		this.reject = null;
+		this.promise = new Promise(function(resolve, reject) {
+			this.resolve = resolve;
+			this.reject = reject;
+		}.bind(this));
+	}
 	function RuleReactor (domain,boost) {
 		this.boost = boost;
 		this.rules = {};
@@ -879,6 +887,8 @@ var uuid = require("uuid");
 				if(me.tracelevel>2) {
 					Console.log("Assert: ",instance);
 				}
+				instance.__classname = instance.constructor.name;
+				instance.__timestamp = new Date();
 				me.run.assertions++;
 				me.data.set(instance.__rrid__,instance);
 				me.dataModified = true;
@@ -919,7 +929,7 @@ var uuid = require("uuid");
 								me.assert(value);
 							}
 							// re-test the rules that pattern match the key
-							if(instance.rules) { 
+							if(instance.rules) {
 								Object.keys(instance.rules).forEach(function(rulename) {
 									var rule = instance.rules[rulename];
 									if(rule.triggers.some(function(trigger) {
@@ -934,7 +944,7 @@ var uuid = require("uuid");
 										}
 										rule.test(instance,key);
 									}
-								});	
+								});
 							}
 							return rrget.value;
 						}
@@ -999,7 +1009,7 @@ var uuid = require("uuid");
 						desc.get = rrget;
 						desc.set = rrset;
 						Object.defineProperty(instance,key,desc);
-						
+
 					}
 				});
 			}
@@ -1069,12 +1079,12 @@ var uuid = require("uuid");
 			test.cxproduct = new CXProduct(collections);
 			args = getFunctionArgs(test);
 			if(args.length>0) {
-				test.required = args.map(function(variable) { 
+				test.required = args.map(function(variable) {
 					var i = variables.indexOf(variable);
 					if(i===-1) {
 						throw new ReferenceError("Undeclared domain variable '" + variable + "' in universal quantification condition function");
 					}
-					return i; 
+					return i;
 				});
 			}
 		}
@@ -1118,12 +1128,12 @@ var uuid = require("uuid");
 			test.cxproduct = new CXProduct(collections);
 			args = getFunctionArgs(test);
 			if(args.length>0) {
-				test.required = args.map(function(variable) { 
+				test.required = args.map(function(variable) {
 					var i = variables.indexOf(variable);
 					if(i===-1) {
 						throw new ReferenceError("Undeclared domain variable '" + variable + "' in existential quantification condition function");
 					}
-					return i; 
+					return i;
 				});
 			}
 		}
@@ -1157,7 +1167,7 @@ var uuid = require("uuid");
 					var desc = Object.getOwnPropertyDescriptor(instance,key);
 					if(desc.get && desc.get.name==="rrget") {
 						if(typeof(desc.get.originalDescriptor)==="undefined") {
-							delete instance[key];
+							// delete instance[key];
 						} else {
 							if(desc.get.originalDescriptor.value instanceof Array || Array.isArray(desc.get.originalDescriptor.value)) {
 								if(instance[key] instanceof Array || Array.isArray(instance[key])) {
@@ -1216,21 +1226,27 @@ var uuid = require("uuid");
 				if(typeof(callback)==="function") {
 					callback();
 				}
+				me.run.stopPromise.resolve();
 				return;
 			}
 			if(me.run.executions<me.run.max) {
-				Object.keys(me.triggerlessRules).forEach(function(rulename) {
-					var rule = me.triggerlessRules[rulename], activations = rule.activations.get(); // get's activations associated with undefined domains
-					if(!activations || activations.length===0) {
-						rule.test();
+				try {
+					Object.keys(me.triggerlessRules).forEach(function(rulename) {
+						var rule = me.triggerlessRules[rulename], activations = rule.activations.get(); // get's activations associated with undefined domains
+						if(!activations || activations.length===0) {
+							rule.test();
+						}
+					});
+					while (me.agenda.length>0) {
+						me.dataModified = false;
+						me.agenda[me.agenda.length-1].execute(me.agenda.length-1);
+						if(me.dataModified) {
+							break;
+						}
 					}
-				});
-				while (me.agenda.length>0) {
-					me.dataModified = false;
-					me.agenda[me.agenda.length-1].execute(me.agenda.length-1);
-					if(me.dataModified) {
-						break;
-					}
+				} catch (e) {
+					console.error('Exception in rule-reactor', e);
+					return me.stop();
 				}
 			}
 			setTimeout(run,0);
@@ -1252,6 +1268,8 @@ var uuid = require("uuid");
 		this.run.stop = new Date();
 		this.run.rps = (this.run.executions / (this.run.stop.getTime() - this.run.start.getTime())) * 1000;
 		this.run.running = false;
+		this.run.stopPromise = new Deferred();
+		return this.run.stopPromise.promise;
 	}
 	RuleReactor.prototype.trace = function(level) {
 		this.tracelevel = level;
@@ -1261,7 +1279,7 @@ var uuid = require("uuid");
 			} else {
 				this.processor.trace(0);
 			}
-		}	
+		}
 	}
 
 	if (this.exports) {
@@ -1274,14 +1292,14 @@ var uuid = require("uuid");
 	}
 }).call((typeof(window)!=="undefined" ? window : (typeof(module)!=="undefined" ? module : null)));
 
-
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{"uuid":3}],2:[function(require,module,exports){
 (function (global){
 
 var rng;
 
-if (global.crypto && crypto.getRandomValues) {
+var crypto = global.crypto || global.msCrypto; // for IE 11
+if (crypto && crypto.getRandomValues) {
   // WHATWG crypto-based RNG - http://wiki.whatwg.org/wiki/Crypto
   // Moderately fast, high quality
   var _rnds8 = new Uint8Array(16);

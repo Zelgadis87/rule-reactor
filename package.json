@@ -36,15 +36,15 @@
   "homepage": "https://github.com/anywhichway/rule-reactorl#readme",
   "devDependencies": {
     "bluebird": "^3.3.5",
-    "browserify": "^13.0.0",
-    "chai": "^3.4.1",
+    "browserify": "^13.3.0",
+    "chai": "^3.5.0",
     "codacy-coverage": "^2.0.0",
     "codeclimate-test-reporter": "^0.2.0",
     "istanbul": "^0.4.2",
-    "minify": "^2.0.8",
-    "mocha": "^2.3.4"
+    "minify": "^2.1.8",
+    "mocha": "^2.5.3"
   },
   "dependencies": {
-    "uuid": "^2.0.1"
+    "uuid": "^2.0.3"
   }
 }
