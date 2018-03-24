@@ -885,6 +885,8 @@ var uuid = require("uuid");
 				if(me.tracelevel>2) {
 					Console.log("Assert: ",instance);
 				}
+				instance.__classname = instance.constructor.name;
+				instance.__timestamp = new Date();
 				me.run.assertions++;
 				me.data.set(instance.__rrid__,instance);
 				me.dataModified = true;
